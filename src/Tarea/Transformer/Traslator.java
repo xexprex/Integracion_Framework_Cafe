@@ -1,5 +1,8 @@
 package Tarea.Transformer;
 
-public class Traslator {
+public class Traslator extends Tarea{
+
 
 }
+
+
