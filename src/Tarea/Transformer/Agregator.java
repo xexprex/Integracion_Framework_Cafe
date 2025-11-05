@@ -8,64 +8,64 @@ import javax.xml.xpath.*;
 import java.util.List;
 
 
-public class Aggregator extends Tarea {
+public class Aggregator extends TareaBase {
 
-	public Aggregator(Slot entrada, Slot salida) {
-        super(List.of(entrada), List.of(salida));
+    public Aggregator(List<Slot> entradas, List<Slot> salidas) {
+        super(entradas, salidas);
     }
 
     @Override
     public void execute() {
-        Slot input = entradas.getFirst();
-        Slot output = salidas.getFirst();
-
-        if (input.isEmptyQueue()) {
-            System.out.println("Aggregator: No hay mensajes en la cola de entrada");
+        if (entradas.getFirst().isEmptyQueue()) {
+            System.out.println("Aggregator: No hay mensajes en la cola de entrada.");
             return;
         }
 
-        List<Message> mensajes = input.getQueue();
-        Utilidad util = new Utilidad(input);
+        List<Mensaje> mensajes = entradas.getFirst().getQueue();
+        boolean terminado = false;
+        int indexGlobal = 0;
 
-        for (Message mensaje : new ArrayList<>(mensajes)) {
+        while (!terminado && indexGlobal < mensajes.size()) {
+            Mensaje mensaje = mensajes.get(indexGlobal);
             Head head = mensaje.getHead();
-            List<Message> secuencia = util.getMessagesByIdSecuencia(head.getIdSecuencia());
 
-            if (secuencia.size() != head.getTotalSecuencia()) continue;
+            Utilidad utilidad = new Utilidad(entradas.getFirst());
+            List<Mensaje> aux = utilidad.getMessagesByIdSecuencia(head.getIdSecuencia());
 
-            try {
-                Message agregado = combinarMensajes(secuencia, head);
-                secuencia.forEach(input::removeByMessage);
-                output.enqueue(agregado);
-                break; // solo procesa una secuencia por ejecución
-            } catch (XPathExpressionException e) {
-                throw new RuntimeException(e);
+            // Verifica si ya llegaron todos los fragmentos
+            if (aux.size() == head.getTotalSecuencia()) {
+                Diccionario diccionario = Diccionario.getInstance();
+                ValoresDiccionario vd = diccionario.get(head.getIdSecuencia());
+                Document context = vd.getContext();
+
+                try {
+                    XPathFactory xPathFactory = XPathFactory.newInstance();
+                    XPath xPath = xPathFactory.newXPath();
+                    XPathExpression expr = xPath.compile(vd.getxPathExpression());
+                    NodeList items = (NodeList) expr.evaluate(context, XPathConstants.NODESET);
+
+                    for (Mensaje m : aux) {
+                        Document docAux = m.getBody();
+                        Node node = docAux.getDocumentElement();
+                        Node importedNode = context.importNode(node, true);
+                        items.item(0).appendChild(importedNode);
+                        entradas.getFirst().removeByMessage(m);
+                    }
+
+                    terminado = true;
+
+                    mensaje.setBody(context);
+                    mensaje.getHead().setNumSecuencia(0);
+                    salidas.getFirst().enqueue(mensaje);
+
+                } catch (XPathExpressionException e) {
+                    System.out.println("Error al ejecutar Aggregator: " + e.getMessage());
+                    e.printStackTrace();
+                }
             }
+
+            indexGlobal++;
         }
     }
-
-    private Message combinarMensajes(List<Message> mensajes, Head head) throws XPathExpressionException {
-        Diccionario diccionario = Diccionario.getInstance();
-        ValoresDiccionario vd = diccionario.get(head.getIdSecuencia());
-        Document context = vd.getContext();
-
-        XPathExpression expr = XPathFactory.newInstance()
-                                           .newXPath()
-                                           .compile(vd.getxPathExpression());
-        NodeList items = (NodeList) expr.evaluate(context, XPathConstants.NODESET);
-
-        for (Message m : mensajes) {
-            Node node = m.getBody().getDocumentElement();
-            Node imported = context.importNode(node, true);
-            items.item(0).appendChild(imported);
-        }
-
-        Message resultado = mensajes.getFirst();
-        resultado.setBody(context);
-        resultado.getHead().setNumSecuencia(0);
-        return resultado;
-    }
-}
-
 }
 
