@@ -4,9 +4,12 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import Principal.Diccionario;
 import Principal.Head;
 import Principal.Mensaje;
 import Principal.Slot;
+import Principal.Utilidad;
+import Principal.ValoresDiccionario;
 import Tarea.TareaBase;
 
 import javax.xml.xpath.*;
@@ -41,7 +44,7 @@ public class Agregator extends TareaBase {
             if (aux.size() == head.getTotalSecuencia()) {
                 Diccionario diccionario = Diccionario.getInstance();
                 ValoresDiccionario vd = diccionario.get(head.getIdSecuencia());
-                Document context = vd.getContext();
+                Document context = (Document) vd.getContext();
 
                 try {
                     XPathFactory xPathFactory = XPathFactory.newInstance();

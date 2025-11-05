@@ -47,7 +47,7 @@ public class Slot {
         int i = 0;
 
         while(!borrado && i < list.size()){
-            if(list.get(i).getCabecera().getIdUnico() == message.getCabecera().getIdUnico()){
+            if(list.get(i).getHead().getIdUnico() == message.getHead().getIdUnico()){
                 removeByIndex(i);
             }
             i++;

@@ -16,6 +16,7 @@ import org.w3c.dom.NodeList;
 
 import Principal.Diccionario;
 import Principal.Head;
+import Principal.IdUnico;
 import Principal.Mensaje;
 import Principal.Slot;
 import Principal.ValoresDiccionario;
@@ -85,7 +86,7 @@ public class Splitter extends TareaBase {
             //(Comentado) — Podría guardarse el documento original en un diccionario global
             // para reconstruirlo más tarde o mantener una referencia
 	          
-	            ValoresDiccionario vD = new ValoresDiccionario(xp, doc);
+	            ValoresDiccionario vD = new ValoresDiccionario(xp, (javax.swing.text.Document) doc);
 	            Diccionario diccionario = Diccionario.getInstance();
 	            diccionario.put(idXML, vD);
             
@@ -105,13 +106,13 @@ public class Splitter extends TareaBase {
                 Node importedItem = newDoc.importNode(item, true);
                 newDoc.appendChild(importedItem);
 
-                // ⓭ (Comentado) — Creación de un encabezado (Head) con metadatos del mensaje
-                // Contendría información como posición del fragmento, total, ID único, etc.
-                /*
+                //(Comentado) — Creación de un encabezado (Head) con metadatos del mensaje
+                // Contendría información como posición del fragmento, total, ID único, etc
+                
                 Head headAux = new Head(0, idXML, i + 1, items.getLength());
                 headAux.setIdUnico(IdUnico.getInstance().getIdUnico());
                 Mensaje mensajeAux = new Mensaje(headAux, newDoc);
-                */
+                
 
                 // Encola el nuevo mensaje XML (fragmento) en la cola de salida
                 // Nota: aquí se asume que 'mensajeAux' ya ha sido creado correctamente
