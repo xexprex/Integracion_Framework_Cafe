@@ -4,13 +4,18 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import Principal.Head;
+import Principal.Mensaje;
+import Principal.Slot;
+import Tarea.TareaBase;
+
 import javax.xml.xpath.*;
 import java.util.List;
 
 
-public class Aggregator extends TareaBase {
+public class Agregator extends TareaBase {
 
-    public Aggregator(List<Slot> entradas, List<Slot> salidas) {
+    public Agregator(List<Slot> entradas, List<Slot> salidas) {
         super(entradas, salidas);
     }
 
