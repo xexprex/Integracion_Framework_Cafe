@@ -10,14 +10,21 @@ import javax.xml.transform.dom.DOMResult;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamSource;
 
+import org.w3c.dom.Document;
+
 import Principal.Mensaje;
 import Principal.Slot;
 import Tarea.TareaBase;
 
 public class Translator extends TareaBase {
 
+	private String rutaXSLT;
+	
     public Translator(List<Slot> entradas, List<Slot> salidas) {
         super(entradas, salidas);
+    }
+    public void setRutaXSLT(String rutaXSLT) {
+        this.rutaXSLT = rutaXSLT;
     }
 
     @Override
