@@ -1,5 +1,6 @@
 package Tarea.Router;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -17,63 +18,67 @@ import Tarea.TareaBase;
 
 public class Correlator extends TareaBase {
 
-	private List<String> xPaths;
-
     public Correlator(List<Slot> entradas, List<Slot> salidas) {
         super(entradas, salidas);
     }
 
-    public void setxPaths(List<String> xPaths) {
-        this.xPaths = xPaths;
-    }
-
     @Override
     public void execute() {
+        for (Slot entrada : entradas) {
+            if (entrada.isEmptyQueue()) {
+                return;
+            }
+        }
 
-        int index = 0;
-        boolean founded = false;
-        List<Mensaje> messages = entradas.getFirst().getQueue();
+        // Iteramos sobre una copia de la cola maestra
+        for (Mensaje mensajeControl : entradas.get(0).getQueue()) {
+            
+            // CAMBIO 1: Usamos el método correcto (getIdCorrelator) y el tipo (int)
+            int idCorrelacion = mensajeControl.getHead().getIdCorrelator();
 
-        while (!founded && index < messages.size()) {
+            // CAMBIO 2: Comparamos con -1 (valor por defecto) en lugar de null
+            if (idCorrelacion == -1) {
+                continue; 
+            }
 
-        	Mensaje msg = messages.get(index);
+            List<Mensaje> mensajesCorrelacionados = new ArrayList<>();
+            mensajesCorrelacionados.add(mensajeControl);
 
-            try {
-                XPathFactory xPathFactory = XPathFactory.newInstance();
-                XPath xPath = xPathFactory.newXPath();
-                XPathExpression expr = xPath.compile(xPaths.getFirst());
-                NodeList items = (NodeList) expr.evaluate(msg.getBody(), XPathConstants.NODESET);
-
-                List<Mensaje> aux = new LinkedList<>();
-                aux.add(msg);
-
-                String rE = items.item(0).getTextContent();
-
-                for (int i = 1; i < entradas.size(); i++) {
-                    Utilidad utilidad = new Utilidad(entradas.get(i));
-                    Mensaje messageFor = utilidad.getMessagesByXPathAndResult(xPaths.get(i), rE);
-
-                    if(messageFor != null)
-                        aux.add(messageFor);
-                    else
-                        break;
+            boolean setCompleto = true;
+            
+            for (int i = 1; i < entradas.size(); i++) {
+                // CAMBIO 3: Pasamos el 'int' al método de búsqueda
+                Mensaje mensajeEncontrado = findMessageByCorrelId(entradas.get(i), idCorrelacion);
+                if (mensajeEncontrado != null) {
+                    mensajesCorrelacionados.add(mensajeEncontrado);
+                } else {
+                    setCompleto = false;
+                    break; 
                 }
+            }
 
-                if(aux.size() == entradas.size()){
-                    founded=true;
-
-                    for(int i=0; i< aux.size(); i++){
-                        entradas.get(i).removeByMessage(aux.get(i));
-                        salidas.get(i).enqueue(aux.get(i));
-                    }
+            if (setCompleto) {
+                for (int i = 0; i < entradas.size(); i++) {
+                    Mensaje msg = mensajesCorrelacionados.get(i);
+                    entradas.get(i).removeByMessage(msg); 
+                    salidas.get(i).enqueue(msg);
                 }
-
-                index++;
-
-            } catch (Exception e) {
-                System.out.println("Error al ejecutar el correlator " + e.getMessage());
+                // (Se mantiene sin el 'return' para procesar múltiples sets)
             }
         }
     }
 
+    /**
+     * Busca un mensaje por ID de correlación (ahora como int).
+     */
+    // CAMBIO 4: El parámetro ahora es 'int'
+    private Mensaje findMessageByCorrelId(Slot slot, int idCorrelacion) {
+        for (Mensaje mensaje : slot.getQueue()) {
+            // CAMBIO 5: Comparamos 'int' con '=='
+            if (idCorrelacion == mensaje.getHead().getIdCorrelator()) {
+                return mensaje;
+            }
+        }
+        return null;
+    }
 }
