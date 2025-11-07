@@ -1,19 +1,10 @@
 package Tarea.Router;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
-
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathExpression;
-import javax.xml.xpath.XPathFactory;
-
-import org.w3c.dom.NodeList;
 
 import Principal.Mensaje;
 import Principal.Slot;
-import Principal.Utilidad;
 import Tarea.TareaBase;
 
 public class Correlator extends TareaBase {

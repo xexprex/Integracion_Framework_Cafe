@@ -1,6 +1,6 @@
 package Principal;
 
-import javax.swing.text.Document;
+import org.w3c.dom.Document;
 
 public class ValoresDiccionario {
 

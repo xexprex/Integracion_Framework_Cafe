@@ -86,7 +86,7 @@ public class Splitter extends TareaBase {
             //(Comentado) — Podría guardarse el documento original en un diccionario global
             // para reconstruirlo más tarde o mantener una referencia
 	          
-	            ValoresDiccionario vD = new ValoresDiccionario(xp, (javax.swing.text.Document) doc);
+	            ValoresDiccionario vD = new ValoresDiccionario(xp, (Document) doc);
 	            Diccionario diccionario = Diccionario.getInstance();
 	            diccionario.put(idXML, vD);
             
