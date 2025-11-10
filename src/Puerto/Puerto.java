@@ -1,6 +1,6 @@
 package Puerto;
 
-import javax.swing.text.Document;
+import org.w3c.dom.Document;
 
 import Principal.Mensaje;
 import Principal.Slot;
