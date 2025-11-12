@@ -43,7 +43,7 @@ class SplitterTest {
         slotSalida = new Slot();
         
         // El Splitter usa la primera entrada y primera salida de las listas
-        splitter = new Splitter(List.of(slotEntrada), List.of(slotSalida));
+        splitter = new Splitter((Slot) List.of(slotEntrada), (Slot) List.of(slotSalida));
         
         docBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
     }

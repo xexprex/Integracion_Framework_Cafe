@@ -25,115 +25,64 @@ import Tarea.TareaBase;
 
 public class Splitter extends TareaBase {
 
-    // Expresión XPath usada para seleccionar los nodos del XML que se van a separar
-    private String xPathExpression;
+	   private String xPathExpression;
+	    private String idXML;
 
-    // Identificador único del XML original (para poder rastrear los fragmentos)
-    private String idXML;
+	    public Splitter(Slot entrada, Slot salida) {
+	        super(List.of(entrada), List.of(salida));
+	    }
 
-    // Constructor: recibe las colas de entrada y salida y las pasa a la clase base
-    public Splitter(List<Slot> entradas, List<Slot> salidas) {
-        super(entradas, salidas);
-    }
+	    @Override
+	    public void execute() {
+	        if (!entradas.getFirst().isEmptyQueue()) {
+	            idXML = UUID.randomUUID().toString();
 
-    // Método principal que ejecuta la tarea del Splitter
-    @Override
-    public void execute() {
+	            Mensaje mensaje = entradas.getFirst().dequeuePoll();
+	            Document doc = mensaje.getBody();
 
-        //Verifica si hay mensajes disponibles en la cola de entrada
-        if (entradas.getFirst().isEmptyQueue()) {
-            // System.out.println("Splitter: No hay mensajes en la cola de entrada."); // Comentado para reducir logs
-            return; // Sale si no hay nada que procesar
-        }
+	            try {
+	                XPathFactory xPathFactory = XPathFactory.newInstance();
+	                XPath xPath = xPathFactory.newXPath();
+	                XPathExpression expr = xPath.compile(xPathExpression);
 
-        try {
-            // Genera un identificador único (UUID) para asociar a todos los fragmentos que salgan de este XML
-            idXML = UUID.randomUUID().toString();
+	                NodeList items = (NodeList) expr.evaluate(doc, XPathConstants.NODESET);
 
-            //Extrae el mensaje de la cola de entrada
-            Mensaje mensaje = entradas.getFirst().dequeuePoll();
-            
-            // --- ¡FIX APLICADO AQUÍ! ---
-            // 1. Guardamos el idCorrelator del mensaje original
-            int originalCorrelatorId = mensaje.getHead().getIdCorrelator();
+	                String xp = "//"+items.item(0).getParentNode().getNodeName();
 
-            //Obtiene el cuerpo del mensaje (un objeto Document XML)
-            Document doc = mensaje.getBody();
+	                for (int i = 0; i < items.getLength(); i++) {
+	                    Node item = items.item(i);
+	                    item.getParentNode().removeChild(item);
+	                }
 
-            // Prepara el motor XPath para buscar nodos dentro del XML
-            XPathFactory xPathFactory = XPathFactory.newInstance();
-            XPath xPath = xPathFactory.newXPath();
+	                ValoresDiccionario vD = new ValoresDiccionario(xp, doc);
+	                Diccionario diccionario = Diccionario.getInstance();
+	                diccionario.put(idXML, vD);
 
-            // Compila la expresión XPath que se haya configurado antes (por setXPathExpression)
-            XPathExpression expr = xPath.compile(xPathExpression);
+	                for (int i = 0; i < items.getLength(); i++) {
+	                    DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+	                    DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+	                    Document newDoc = docBuilder.newDocument();
 
-            //  Evalúa la expresión XPath sobre el documento XML, obteniendo un conjunto de nodos
-            NodeList items = (NodeList) expr.evaluate(doc, XPathConstants.NODESET);
+	                    Node item = items.item(i);
+	                    Node importedItem = newDoc.importNode(item, true);
+	                    newDoc.appendChild(importedItem);
 
-            // Si no hay nodos que coincidan, se informa y se termina
-            if (items == null || items.getLength() == 0) {
-                System.out.println("Splitter: No se encontraron nodos con la expresión XPath.");
-                return;
-            }
+	                    Head headAux = new Head(0, idXML, (i+1), items.getLength());
+	                    headAux.setIdUnico(IdUnico.getInstance().getIdUnico());
+	                    Mensaje mensajeAux = new Mensaje(headAux, newDoc);
 
-            // Obtiene el nombre del nodo padre del primer elemento encontrado
-            // Esto puede usarse más adelante para reconstruir el XML si es necesario
-            String xp = "//" + items.item(0).getParentNode().getNodeName();
+	                    salidas.getFirst().enqueue(mensajeAux);
+	                }
 
-            // Elimina los nodos encontrados del documento original
-            // (esto deja una copia del documento sin los nodos seleccionados)
-            for (int i = 0; i < items.getLength(); i++) {
-                Node item = items.item(i);
-                item.getParentNode().removeChild(item);
-            }
+	            } catch (Exception e) {
+	                System.out.println("Error al ejecutar el splitter " + e.getMessage());
+	            }
+	        } else {
+	            System.out.println("Splitter: No hay mensajes en la cola de entrada");
+	        }
+	    }
 
-            //(Comentado) — Podría guardarse el documento original en un diccionario global
-            // para reconstruirlo más tarde o mantener una referencia
-	          
-	            ValoresDiccionario vD = new ValoresDiccionario(xp, (Document) doc);
-	            Diccionario diccionario = Diccionario.getInstance();
-	            diccionario.put(idXML, vD);
-            
-
-            //Por cada nodo encontrado, se crea un nuevo mensaje independiente
-            for (int i = 0; i < items.getLength(); i++) {
-
-                // Crea un nuevo documento XML vacío
-                DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
-                DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
-                Document newDoc = docBuilder.newDocument();
-
-                // Toma el nodo actual del listado
-                Node item = items.item(i);
-
-                // Importa ese nodo al nuevo documento (deep = true copia todo su contenido)
-                Node importedItem = newDoc.importNode(item, true);
-                newDoc.appendChild(importedItem);
-
-                //(Comentado) — Creación de un encabezado (Head) con metadatos del mensaje
-                // Contendría información como posición del fragmento, total, ID único, etc
-                
-                // --- ¡FIX APLICADO AQUÍ! ---
-                // 2. Pasamos el originalCorrelatorId al crear el nuevo Head
-                Head headAux = new Head(originalCorrelatorId, idXML, i + 1, items.getLength());
-                headAux.setIdUnico(IdUnico.getInstance().getIdUnico());
-                Mensaje mensajeAux = new Mensaje(headAux, newDoc);
-                
-
-                // Encola el nuevo mensaje XML (fragmento) en la cola de salida
-                // Nota: aquí se asume que 'mensajeAux' ya ha sido creado correctamente
-                salidas.getFirst().enqueue(mensajeAux);
-            }
-
-        } catch (Exception e) {
-            //Si ocurre algún error, se muestra un mensaje en consola y la traza de error
-            System.out.println("Error al ejecutar Splitter: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    // Método setter para configurar desde fuera la expresión XPath
-    public void setXPathExpression(String xPathExpression) {
-        this.xPathExpression = xPathExpression;
-    }
-}
+	    public void setXPathExpression(String xPathExpression) {
+	        this.xPathExpression = xPathExpression;
+	    }
+	}
