@@ -2,11 +2,16 @@ package Principal;
 //package main.java;
 
 import java.io.File;
+import java.io.StringReader;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.w3c.dom.Document;
+import org.xml.sax.InputSource;
+
+import Conector.ConectorSolicitudDB;
+import Puerto.PuertoSolicitante;
 
 public class IntegracionCafe {
 
@@ -202,6 +207,59 @@ public class IntegracionCafe {
             System.out.println("\n---Ha ocurrido un error fatal en el main ---");
             e.printStackTrace();
         }*/
+    System.out.println("\n--- Probando ConectorSQL (con Maven y AAD) ---");
+
+    // --- 1. Configuración de la Base de Datos ---
+    
+    // Esta es la URL mágica. 
+    // "ActiveDirectoryDefault" buscará tu credencial de Azure (de 'az login')
+    String connectionUrl = "jdbc:sqlserver://integracion.database.windows.net:1433;" +
+                         "database=bebidas;" +
+                         "encrypt=true;" +
+                         "trustServerCertificate=true;" +
+                         "authentication=ActiveDirectoryDefault;"; 
+
+    // --- 2. Cableado de Componentes ---
+    Slot slotPeticion = new Slot();
+    Slot slotRespuesta = new Slot();
+    PuertoSolicitante puertoSQL = new PuertoSolicitante(slotPeticion, slotRespuesta);
+
+    // ¡Llama al constructor SIN contraseña!
+    ConectorSolicitudDB conectorDB = new ConectorSolicitudDB(puertoSQL, connectionUrl);
+
+    // --- 3. Simulación de Petición (Request) ---
+    try {
+        String xmlPeticion = "<peticion><sql>SELECT * FROM bebidas</sql></peticion>"; 
         
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document docPeticion = builder.parse(new InputSource(new StringReader(xmlPeticion)));
+
+        Head headPeticion = new Head();
+        headPeticion.setIdUnico(Principal.IdUnico.getInstance().getIdUnico());
+        Mensaje msgPeticion = new Mensaje(headPeticion, docPeticion);
+
+        slotPeticion.enqueue(msgPeticion);
+        System.out.println("Mensajes en la cola de PETICIÓN: " + slotPeticion.getQueueSize());
+
+        // --- 4. Simulación del Procesamiento ---
+        conectorDB.execute(); 
+        puertoSQL.execute();  
+
+        // --- 5. Verificación de Respuesta ---
+        System.out.println("Mensajes en la cola de PETICIÓN (debe ser 0): " + slotPeticion.getQueueSize());
+        System.out.println("Mensajes en la cola de RESPUESTA (debe ser 1): " + slotRespuesta.getQueueSize());
+
+        if (!slotRespuesta.isEmptyQueue()) {
+            Mensaje msgRespuesta = slotRespuesta.dequeuePoll();
+            Document docRespuesta = msgRespuesta.getBody();
+            String nodoRaiz = docRespuesta.getDocumentElement().getTagName();
+            System.out.println("Respuesta recibida. Nodo raíz: " + nodoRaiz);
+        }
+
+    } catch (Exception e) {
+        System.out.println("Error en la prueba del ConectorSQL: " + e.getMessage());
+        e.printStackTrace();
+    }
     }
 }

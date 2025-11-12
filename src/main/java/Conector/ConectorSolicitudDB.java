@@ -31,27 +31,22 @@ public class ConectorSolicitudDB extends Conector {
     }
 
     public void execute() {
-        // Obtiene el documento XML de entrada desde el slot de entrada del puerto
         Document docEntrada = puerto.getDocumentBySlot();
         
         if (docEntrada == null) {
-            // No hay nada que procesar
             return;
         }
 
-        // Extrae la consulta SQL del XML (asumiendo <sql>...</sql>)
         String query = docEntrada.getElementsByTagName("sql").item(0).getTextContent();
-        System.out.println("ConectorSQLAzure: Ejecutando query: " + query);
+        System.out.println("Conector: Ejecutando query: " + query);
 
         try (Statement stmt = con.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
 
-            // Crea un nuevo documento XML para la respuesta
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
             Document newDoc = builder.newDocument();
 
-            // Construye el XML de respuesta a partir del ResultSet
             Element raiz = newDoc.createElement("resultadoSQL");
             newDoc.appendChild(raiz);
 
@@ -69,14 +64,11 @@ public class ConectorSolicitudDB extends Conector {
                     fila.appendChild(elementoCol);
                 }
             }
-
-            // Pone el documento de respuesta en el puerto
-       
+            
             puerto.setDocument(newDoc);
 
         } catch (Exception e) {
-            System.out.println("ConectorSQLAzure: Error al ejecutar la consulta: " + e.getMessage());
-
+            System.out.println("Conector: Error al ejecutar la consulta: " + e.getMessage());
         }
     }
 }
