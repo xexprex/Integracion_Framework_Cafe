@@ -27,7 +27,7 @@ public class PuertoSalida extends Puerto{
             doc = (Document) mensaje.getBody();
 
             // ¡Simula el "envío al exterior" imprimiéndolo!
-            System.out.println("\n--- 📨 PUERTO DE SALIDA HA RECIBIDO ---");
+            System.out.println("\n---PUERTO DE SALIDA HA RECIBIDO ---");
             System.out.println("  ID Único: " + mensaje.getHead().getIdUnico());
             try {
                 // Imprime el contenido XML

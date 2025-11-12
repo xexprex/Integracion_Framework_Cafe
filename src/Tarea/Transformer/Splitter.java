@@ -42,7 +42,7 @@ public class Splitter extends TareaBase {
 
         //Verifica si hay mensajes disponibles en la cola de entrada
         if (entradas.getFirst().isEmptyQueue()) {
-            System.out.println("Splitter: No hay mensajes en la cola de entrada.");
+            // System.out.println("Splitter: No hay mensajes en la cola de entrada."); // Comentado para reducir logs
             return; // Sale si no hay nada que procesar
         }
 
@@ -52,6 +52,10 @@ public class Splitter extends TareaBase {
 
             //Extrae el mensaje de la cola de entrada
             Mensaje mensaje = entradas.getFirst().dequeuePoll();
+            
+            // --- ¡FIX APLICADO AQUÍ! ---
+            // 1. Guardamos el idCorrelator del mensaje original
+            int originalCorrelatorId = mensaje.getHead().getIdCorrelator();
 
             //Obtiene el cuerpo del mensaje (un objeto Document XML)
             Document doc = mensaje.getBody();
@@ -109,7 +113,9 @@ public class Splitter extends TareaBase {
                 //(Comentado) — Creación de un encabezado (Head) con metadatos del mensaje
                 // Contendría información como posición del fragmento, total, ID único, etc
                 
-                Head headAux = new Head(0, idXML, i + 1, items.getLength());
+                // --- ¡FIX APLICADO AQUÍ! ---
+                // 2. Pasamos el originalCorrelatorId al crear el nuevo Head
+                Head headAux = new Head(originalCorrelatorId, idXML, i + 1, items.getLength());
                 headAux.setIdUnico(IdUnico.getInstance().getIdUnico());
                 Mensaje mensajeAux = new Mensaje(headAux, newDoc);
                 
