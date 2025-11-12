@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pedido tipo="LIBRO" idCorrelator="100">
+    <valido>true</valido>
+    <destino>/pedido</destino>
+    <items_a_separar>
+        <item><id>L001</id><desc>Libro Java</desc></item>
+        <item><id>L002</id><desc>Libro Patrones</desc></item>
+    </items_a_separar>
+</pedido>

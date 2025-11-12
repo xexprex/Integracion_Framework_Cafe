@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pedido>
+    <tipo>B</tipo>
+    <valor>456</valor>
+    <destino>ClienteXYZ</destino>
+</pedido>

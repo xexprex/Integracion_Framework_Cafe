@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<factura idCorrelator="100">
+    <detalle>Factura para pedido 100</detalle>
+    <valor>150</valor>
+</factura>
