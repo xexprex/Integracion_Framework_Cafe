@@ -11,14 +11,9 @@ import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 
 import Conector.ConectorSolicitudDB;
-import Puerto.PuertoSolicitante;
-
-//Metodo de pago
 import Conector.ConectorStripePago;
-import java.io.StringReader;
-import org.xml.sax.InputSource;
-
-
+import Puerto.PuertoSolicitante;
+import io.github.cdimascio.dotenv.Dotenv;
 
 public class IntegracionCafe {
 
@@ -35,6 +30,7 @@ public class IntegracionCafe {
     }
 
     public static void main(String[] args) {
+        
         pruebaBaseDeDatos();
         pruebaStripePago();
     }
@@ -43,12 +39,15 @@ public class IntegracionCafe {
 
         System.out.println("\n--- Probando ConectorSQL (con Maven y AAD) ---");
 
+        Dotenv dotenv = Dotenv.load();
+        String basededatos = dotenv.get("DB_HOST");
+        String usuario = dotenv.get("DB_USER");
+        String contaseña = dotenv.get("STRIPE_KEY");
 
-
-        String connectionUrl = "jdbc:sqlserver://integracion.database.windows.net:1433;" + // TODO
+        String connectionUrl = basededatos+";" + // TODO
                 "database=Practica_Integracion;" +
-                "user=PruebaUsuario;" +
-                "password=,PruebaContraseña;" +
+                "user="+usuario+";" +
+                "password="+contaseña+";" +
                 "encrypt=true;" +
                 "trustServerCertificate=false;" +
                 "hostNameInCertificate=*.database.windows.net;";
@@ -98,7 +97,8 @@ public class IntegracionCafe {
     System.out.println("\n--- Probando ConectorStripePago ---");
 
     // 1. Pega tu clave secreta de prueba aquí
-    
+    Dotenv dotenv = Dotenv.load();
+    String stripeApiKey = dotenv.get("STRIPE_KEY");
     
     // 2. Configurar los Slots y el Puerto (igual que en tu prueba de DB)
     //
