@@ -35,14 +35,7 @@ public class IntegracionCafe {
 
         System.out.println("\n--- Probando ConectorSQL (con Maven y AAD) ---");
 
-        /*
-         * String connectionUrl =
-         * "jdbc:sqlserver://integracion.database.windows.net:1433;" +
-         * "database=Practica_Integracion;" +
-         * "encrypt=true;" +
-         * "trustServerCertificate=true;" +
-         * "authentication=ActiveDirectoryInteractive;";
-         */
+
 
         String connectionUrl = "jdbc:sqlserver://integracion.database.windows.net:1433;" + // TODO
                 "database=Practica_Integracion;" +
