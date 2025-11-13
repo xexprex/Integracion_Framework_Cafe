@@ -34,6 +34,11 @@
             <version>5.10.2</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.stripe</groupId>
+            <artifactId>stripe-java</artifactId>
+            <version>24.20.0</version> 
+        </dependency>
     </dependencies>
 
     <build>
