@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pedido>
+    <tipo>C</tipo>
+    <valor>789</valor>
+    <nota>Este sera descartado</nota>
+</pedido>

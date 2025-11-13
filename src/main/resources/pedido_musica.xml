@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pedido tipo="MUSICA" idCorrelator="200">
+    <valido>true</valido>
+    <info_original>
+        <artista>Artista X</artista>
+        <album>Album Y</album>
+    </info_original>
+</pedido>
