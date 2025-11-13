@@ -1,6 +1,16 @@
 package Conector;
 
 
+import java.io.File;
+import java.time.LocalDateTime;
+
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+
+import org.w3c.dom.Document;
+
 import Puerto.Puerto;
 
 public class ConectorFicheroSalida extends Conector{
@@ -15,22 +25,22 @@ public class ConectorFicheroSalida extends Conector{
     }
 
     public void execute(){
-        /*LocalDateTime fechaHoraActual = LocalDateTime.now();
-        DateTimeFormatter formato = DateTimeFormatter.ofPattern("dd_MM_yyyy HH_mm_ss_nnnnnnnnn");
-        String nombreFichero = fechaHoraActual.format(formato);
+        LocalDateTime fecha = LocalDateTime.now();
+        java.time.format.DateTimeFormatter formato = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+        String fechaCadena = fecha.format(formato);
+   
 
-        Document doc = port.getDocumentBySlot();
+        Document doc = super.puerto.getDocumentBySlot();
 
         try {
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
             Transformer transformer = transformerFactory.newTransformer();
             DOMSource source = new DOMSource(doc);
-            StreamResult result = new StreamResult
-                    (new File(this.filePath + File.separator + nombreFichero +".xml"));
+            StreamResult result = new StreamResult(new File(rutaSalida+ File.separator + fechaCadena +".xml"));
             transformer.transform(source, result);
 
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
-        }*/
+        }
     }
 }
