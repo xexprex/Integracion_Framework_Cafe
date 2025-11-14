@@ -10,9 +10,14 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 
+import Conector.ConectorFicheroEntrada;
+import Conector.ConectorFicheroSalida;
 import Conector.ConectorSolicitudDB;
 import Conector.ConectorStripePago;
+import Puerto.PuertoEntrada;
+import Puerto.PuertoSalida;
 import Puerto.PuertoSolicitante;
+import Tarea.Transformer.Splitter;
 import io.github.cdimascio.dotenv.Dotenv;
 
 public class IntegracionCafe {
@@ -30,9 +35,40 @@ public class IntegracionCafe {
     }
 
     public static void main(String[] args) {
+
+        // pruebaBaseDeDatos();
+        // pruebaStripePago();
+
+        Slot slotEntrada = new Slot();
+        Slot slotSalida = new Slot();
+        PuertoEntrada puertoPrueba = new PuertoEntrada(slotEntrada);
+        ConectorFicheroEntrada conectorFichero = new ConectorFicheroEntrada(puertoPrueba);
+        conectorFichero.setRuta("src/main/resources/order1.xml");
+        Splitter splitter = new Splitter(slotEntrada, slotSalida);
+        PuertoSalida puertaSalida = new PuertoSalida(slotSalida);
+        ConectorFicheroSalida conectorFicheroSalida = new ConectorFicheroSalida(puertaSalida);
+        conectorFicheroSalida.setRutaSalida("src/main/resources/SALIDAPRUEBA");
+        splitter.setXPathExpression("//drink");
+
+        conectorFichero.execute();
+        puertoPrueba.execute();
+
+        conectorFicheroSalida.execute();
+        puertaSalida.execute();
+        while (!slotEntrada.isEmptyQueue()) {
+            splitter.execute();
+        }
         
-        pruebaBaseDeDatos();
-        pruebaStripePago();
+        int i = 0;
+        while (!slotSalida.isEmptyQueue()) {
+            // El ConectorFicheroSalida toma 1 mensaje del puerto (que lo saca del
+            // slotSalida)
+            // y lo escribe a un archivo.
+            conectorFicheroSalida.execute();
+            System.out.println("Archivo de salida " + (i + 1) + " creado.");
+            i++;
+        }
+
     }
 
     public static void pruebaBaseDeDatos() {
@@ -44,10 +80,10 @@ public class IntegracionCafe {
         String usuario = dotenv.get("DB_USER");
         String contaseña = dotenv.get("STRIPE_KEY");
 
-        String connectionUrl = basededatos+";" + // TODO
+        String connectionUrl = basededatos + ";" +
                 "database=Practica_Integracion;" +
-                "user="+usuario+";" +
-                "password="+contaseña+";" +
+                "user=" + usuario + ";" +
+                "password=" + contaseña + ";" +
                 "encrypt=true;" +
                 "trustServerCertificate=false;" +
                 "hostNameInCertificate=*.database.windows.net;";
@@ -92,71 +128,68 @@ public class IntegracionCafe {
         }
     }
 
-
     public static void pruebaStripePago() {
-    System.out.println("\n--- Probando ConectorStripePago ---");
+        System.out.println("\n--- Probando ConectorStripePago ---");
 
-    // 1. Pega tu clave secreta de prueba aquí
-    Dotenv dotenv = Dotenv.load();
-    String stripeApiKey = dotenv.get("STRIPE_KEY");
-    
-    // 2. Configurar los Slots y el Puerto (igual que en tu prueba de DB)
-    //
-    Slot slotPeticionPago = new Slot();
-    Slot slotRespuestaPago = new Slot();
-    // Usamos PuertoSolicitante para el patrón Petición-Respuesta
-    //
-    PuertoSolicitante puertoPago = new PuertoSolicitante(slotPeticionPago, slotRespuestaPago);
+        // 1. Pega tu clave secreta de prueba aquí
+        Dotenv dotenv = Dotenv.load();
+        String stripeApiKey = dotenv.get("STRIPE_KEY");
 
-    // 3. Crear el nuevo Conector
-    ConectorStripePago conectorStripe = new ConectorStripePago(puertoPago, stripeApiKey);
-
-    try {
-        // 4. Crear el Mensaje de petición XML
-        String xmlPeticion = "<peticionPago>" +
-                             "<monto>2000</monto>" + // 2000 céntimos (ej: 20 EUR)
-                             "<moneda>eur</moneda>" +
-                             "<fuente>tok_visa</fuente>" + // Token de tarjeta de prueba de Stripe
-                             "</peticionPago>";
-
-        // Convertir String a Document (como en tu prueba de DB)
+        // 2. Configurar los Slots y el Puerto (igual que en tu prueba de DB)
         //
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        DocumentBuilder builder = factory.newDocumentBuilder();
-        Document docPeticion = builder.parse(new InputSource(new StringReader(xmlPeticion)));
+        Slot slotPeticionPago = new Slot();
+        Slot slotRespuestaPago = new Slot();
+        // Usamos PuertoSolicitante para el patrón Petición-Respuesta
+        //
+        PuertoSolicitante puertoPago = new PuertoSolicitante(slotPeticionPago, slotRespuestaPago);
 
-        Head headPeticion = new Head();
-        headPeticion.setIdUnico(Principal.IdUnico.getInstance().getIdUnico());
-        Mensaje msgPeticion = new Mensaje(headPeticion, docPeticion);
+        // 3. Crear el nuevo Conector
+        ConectorStripePago conectorStripe = new ConectorStripePago(puertoPago, stripeApiKey);
 
-        // 5. Enviar mensaje al flujo
-        slotPeticionPago.enqueue(msgPeticion);
-        System.out.println("Mensajes en cola PETICION PAGO: " + slotPeticionPago.getQueueSize());
+        try {
+            // 4. Crear el Mensaje de petición XML
+            String xmlPeticion = "<peticionPago>" +
+                    "<monto>2000</monto>" + // 2000 céntimos (ej: 20 EUR)
+                    "<moneda>eur</moneda>" +
+                    "<fuente>tok_visa</fuente>" + // Token de tarjeta de prueba de Stripe
+                    "</peticionPago>";
 
-        // 6. Ejecutar los componentes en orden
-        conectorStripe.execute(); // Conector llama a la API externa
-        puertoPago.execute();     // Puerto mueve la respuesta al slot de salida
+            // Convertir String a Document (como en tu prueba de DB)
+            //
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document docPeticion = builder.parse(new InputSource(new StringReader(xmlPeticion)));
 
-        // 7. Verificar los resultados
-        System.out.println("Mensajes en cola PETICION PAGO (debe ser 0): " + slotPeticionPago.getQueueSize());
-        System.out.println("Mensajes en cola RESPUESTA PAGO (debe ser 1): " + slotRespuestaPago.getQueueSize());
+            Head headPeticion = new Head();
+            headPeticion.setIdUnico(Principal.IdUnico.getInstance().getIdUnico());
+            Mensaje msgPeticion = new Mensaje(headPeticion, docPeticion);
 
-        if (!slotRespuestaPago.isEmptyQueue()) {
-            Mensaje msgRespuesta = slotRespuestaPago.dequeuePoll();
-            Document docRespuesta = msgRespuesta.getBody();
-            String nodoRaiz = docRespuesta.getDocumentElement().getTagName();
-            String estado = docRespuesta.getElementsByTagName("estado").item(0).getTextContent();
+            // 5. Enviar mensaje al flujo
+            slotPeticionPago.enqueue(msgPeticion);
+            System.out.println("Mensajes en cola PETICION PAGO: " + slotPeticionPago.getQueueSize());
 
-            System.out.println("Respuesta de Stripe recibida. Nodo raíz: " + nodoRaiz);
-            System.out.println("Estado del pago: " + estado); // Debería ser "succeeded"
+            // 6. Ejecutar los componentes en orden
+            conectorStripe.execute(); // Conector llama a la API externa
+            puertoPago.execute(); // Puerto mueve la respuesta al slot de salida
+
+            // 7. Verificar los resultados
+            System.out.println("Mensajes en cola PETICION PAGO (debe ser 0): " + slotPeticionPago.getQueueSize());
+            System.out.println("Mensajes en cola RESPUESTA PAGO (debe ser 1): " + slotRespuestaPago.getQueueSize());
+
+            if (!slotRespuestaPago.isEmptyQueue()) {
+                Mensaje msgRespuesta = slotRespuestaPago.dequeuePoll();
+                Document docRespuesta = msgRespuesta.getBody();
+                String nodoRaiz = docRespuesta.getDocumentElement().getTagName();
+                String estado = docRespuesta.getElementsByTagName("estado").item(0).getTextContent();
+
+                System.out.println("Respuesta de Stripe recibida. Nodo raíz: " + nodoRaiz);
+                System.out.println("Estado del pago: " + estado); // Debería ser "succeeded"
+            }
+
+        } catch (Exception e) {
+            System.out.println("Error en la prueba del ConectorStripe: " + e.getMessage());
+            e.printStackTrace();
         }
-
-    } catch (Exception e) {
-        System.out.println("Error en la prueba del ConectorStripe: " + e.getMessage());
-        e.printStackTrace();
     }
-}
-
-
 
 }
