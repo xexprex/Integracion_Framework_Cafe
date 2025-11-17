@@ -35,7 +35,7 @@ public class ConectorStripePago extends Conector {
     public void execute() {
         // 1. Obtener el Document XML de petición desde el puerto
         //
-        Document docPeticion = puerto.getDocumentBySlot(); 
+       Document docPeticion = puerto.getDocumentBySlot(); 
         if (docPeticion == null) {
             System.out.println("ConectorStripe: No hay petición en el puerto.");
             return;

@@ -254,6 +254,7 @@ public class IntegracionCafe {
 
                 // b. Iniciar el "motor"
                 int ciclos = 0;
+                
                 while (!isSistemaEstable(todosLosSlots)) {
                     
                     // Ejecutar todos los componentes en orden lógico
@@ -288,8 +289,11 @@ public class IntegracionCafe {
                     replicatorPago.execute();
                     translatorPago.execute();
                     puertoPago.execute();
-                    conectorStripe.execute();
-                    puertoPago.execute(); // Segundo execute para mover la respuesta
+                    
+                    if(!slotPeticionPago.isEmptyQueue()) {
+                    conectorStripe.execute(); // Segundo execute para mover la respuesta
+                    } 
+                    puertoPago.execute();
                     enricherPago.execute();
                     
                     // --- MODIFICADO ---: Salida a Fichero (Camarero)
@@ -448,6 +452,5 @@ public class IntegracionCafe {
         // Usamos la API Stream para comprobar si "alguno" de los slots NO está vacío
         return !Stream.of(slots).anyMatch(slot -> !slot.isEmptyQueue());
     }
-
 }
 
