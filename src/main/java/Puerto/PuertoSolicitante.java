@@ -13,9 +13,15 @@ public class PuertoSolicitante extends Puerto{
 
     @Override
     public void execute() {
-        if(doc != null){
+        if(doc != null && mensaje != null){ // Añadimos un check extra
             mensaje.setBody((Document) doc);
             salida.enqueue(mensaje);
+            
+            // --- INICIO DE LA CORRECCIÓN ---
+            // Limpiamos el estado para no procesar el mismo mensaje 101 veces
+            doc = null;
+            mensaje = null;
+            // --- FIN DE LA CORRECCIÓN ---
         }
     }
 

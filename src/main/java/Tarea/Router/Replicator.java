@@ -25,7 +25,7 @@ public class Replicator extends TareaBase{
                 salida.enqueue(aux);
             }
         } else {
-            System.out.println("Replicator: No hay mensajes en la cola de entrada");
+            //System.out.println("Replicator: No hay mensajes en la cola de entrada");
         }
     }
 }

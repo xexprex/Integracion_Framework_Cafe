@@ -79,7 +79,7 @@ public class Splitter extends TareaBase {
 	                System.out.println("Error al ejecutar el splitter " + e.getMessage());
 	            }
 	        } else {
-	            System.out.println("Splitter: No hay mensajes en la cola de entrada");
+	            //System.out.println("Splitter: No hay mensajes en la cola de entrada");
 	        }
 	    }
 

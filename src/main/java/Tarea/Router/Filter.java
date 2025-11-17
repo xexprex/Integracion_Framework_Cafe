@@ -47,7 +47,7 @@ public class Filter extends TareaBase{
 	            }
 
 	        } else {
-	            System.out.println("Filter: no hay mensajes en la entrada");
+	            //System.out.println("Filter: no hay mensajes en la entrada");
 	        }
 
 	    }

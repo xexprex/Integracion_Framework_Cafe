@@ -25,7 +25,7 @@ public class Agregator extends TareaBase {
     @Override
     public void execute() {
         if (entradas.getFirst().isEmptyQueue()) {
-            System.out.println("Aggregator: No hay mensajes en la cola de entrada.");
+            //System.out.println("Aggregator: No hay mensajes en la cola de entrada.");
             return;
         }
 

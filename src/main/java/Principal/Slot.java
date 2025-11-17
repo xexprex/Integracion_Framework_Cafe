@@ -50,6 +50,7 @@ public class Slot {
         while(!borrado && i < list.size()){
             if(list.get(i).getHead().getIdUnico() == message.getHead().getIdUnico()){
                 removeByIndex(i);
+                borrado = true; // <-- ESTA ES LA LÍNEA QUE FALTA
             }
             i++;
         }

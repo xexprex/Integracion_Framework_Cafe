@@ -30,7 +30,7 @@ public class Translator extends TareaBase {
     @Override
     public void execute() {
     	if(entradas.getFirst().isEmptyQueue()) {
-    		System.out.println("Translator: No hay mensaje en la cola de entrada.");
+    		//System.out.println("Translator: No hay mensaje en la cola de entrada.");
     		return;
     	}
     	

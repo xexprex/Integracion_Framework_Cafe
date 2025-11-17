@@ -49,7 +49,7 @@ public class Distributor extends TareaBase {
             }
 
         } else {
-            System.out.println("Distributor: No hay mensajes en la cola de entrada");
+            //System.out.println("Distributor: No hay mensajes en la cola de entrada");
         }
     }
 
