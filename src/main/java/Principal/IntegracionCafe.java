@@ -285,7 +285,7 @@ public class IntegracionCafe {
                     merger.execute();
                     agregator.execute();
                     
-                    // --- NUEVO ---: Ejecutar componentes de pago
+                    // --- N1UEVO ---: Ejecutar componentes de pago
                     replicatorPago.execute();
                     translatorPago.execute();
                     puertoPago.execute();
