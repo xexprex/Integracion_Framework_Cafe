@@ -2,7 +2,6 @@ package Principal;
 
 
 import java.io.File;
-import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -13,20 +12,14 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.w3c.dom.Document;
-import org.xml.sax.InputSource;
 
 import Conector.ConectorFicheroEntrada;
 import Conector.ConectorFicheroSalida;
 import Conector.ConectorSolicitudDB;
 import Conector.ConectorStripePago;
-import Principal.Head;
-import Principal.Mensaje;
-import Principal.Slot;
 import Puerto.PuertoEntrada;
 import Puerto.PuertoSalida;
 import Puerto.PuertoSolicitante;
-import Tarea.ITarea;
-import Tarea.TareaBase;
 import Tarea.Router.Correlator;
 import Tarea.Router.Distributor;
 import Tarea.Router.Merge;
@@ -63,7 +56,7 @@ public class IntegracionCafe {
             Dotenv dotenv = Dotenv.load();
             String basededatos = dotenv.get("DB_HOST");
             String usuario = dotenv.get("DB_USER");
-            String contaseña = dotenv.get("STRIPE_KEY"); // Clave de Stripe y Pass de DB
+            String contaseña = dotenv.get("DB_PASS"); // Clave de Stripe y Pass de DB
             String stripeApiKey = dotenv.get("STRIPE_KEY"); // --- NUEVO ---
 
             String connectionUrl = basededatos + ";" +
