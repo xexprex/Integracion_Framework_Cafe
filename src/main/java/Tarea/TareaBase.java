@@ -1,10 +1,9 @@
 package Tarea;
 
 import java.util.List;
-
 import Principal.Slot;
 
-
+//Tarea base es nuestro constructor universal
 public abstract class TareaBase implements ITarea {
 
     protected final List<Slot> entradas, salidas;

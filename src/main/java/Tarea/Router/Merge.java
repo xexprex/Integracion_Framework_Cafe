@@ -7,8 +7,14 @@ import Tarea.TareaBase;
 import java.util.List;
 
 public class Merge extends TareaBase {
-     public Merge(List<Slot> entradas, Slot salida) {
-        super(entradas, List.of(salida));
+     
+    public Merge(List<Slot> entradas, List<Slot> salidas) {
+            super(entradas, salidas);
+            
+            // VALIDACIÓN (Importante): Protegemos la lógica interna
+            if (salidas.size() != 1) {
+                throw new IllegalArgumentException("Splitter requiere exactamente 1 slot de salida");
+            }
     }
 
     @Override

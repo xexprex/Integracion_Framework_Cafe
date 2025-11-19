@@ -3,9 +3,10 @@ package Principal;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
-import java.util.stream.Stream;
 
 import Conector.ConectorFicheroEntrada;
 import Conector.ConectorFicheroSalida;
@@ -13,28 +14,19 @@ import Conector.ConectorSolicitudDB;
 import Puerto.PuertoEntrada;
 import Puerto.PuertoSalida;
 import Puerto.PuertoSolicitante;
-import Tarea.Router.Correlator;
-import Tarea.Router.Distributor;
-import Tarea.Router.Merge;
-import Tarea.Router.Replicator;
-import Tarea.Transformer.Agregator;
-import Tarea.Transformer.Splitter;
-import Tarea.Transformer.Translator;
-import Tarea.modifier.ContextEnricher;
+import Tarea.ITarea;
+import Tarea.TareaFactory;
 import io.github.cdimascio.dotenv.Dotenv;
 
 public class cafe {
-    public static void main(String[] args) {
-        System.out.println("Iniciando la simulación de IntegracionCafe...");
 
-        try {       
-        
-        	 // --- 1. CONFIGURACIÓN INICIAL (Cargar .env y Conexión DB) ---
+    public void CafesinPago() {
+        try {
+            // --- 1. CONFIGURACIÓN INICIAL (Cargar .env y Conexión DB) ---
             Dotenv dotenv = Dotenv.load();
             String basededatos = dotenv.get("DB_HOST");
             String usuario = dotenv.get("DB_USER");
-            String contaseña = dotenv.get("DB_PASS"); // Clave de Stripe y Pass de DB
-            String stripeApiKey = dotenv.get("STRIPE_KEY"); // --- NUEVO ---
+            String contaseña = dotenv.get("DB_PASS");
 
             String connectionUrl = basededatos + ";" +
                     "database=Practica_Integracion;" +
@@ -43,251 +35,267 @@ public class cafe {
                     "encrypt=true;" +
                     "trustServerCertificate=false;" +
                     "hostNameInCertificate=*.database.windows.net;";
-        	
-        	System.out.println("Conectando a la base de datos...");
 
-            // --- 2. DEFINICIÓN DE TODOS LOS SLOTS (CANALES) ---
-            
-            // a. Entrada
-            Slot slotComandasIn = new Slot();
-            
-            // b. Splitter -> Distributor
-            Slot slotSplitterOut = new Slot();
-            
-            // c. Distributor -> Replicators
-            Slot slotBebidasFrias = new Slot();
-            Slot slotBebidasCalientes = new Slot();
-            
-            // d. Flujo Frío
-            Slot slotRepFrio1_ToTrans = new Slot();
-            Slot slotRepFrio2_ToCorr = new Slot();
-            Slot slotTransFrio_ToPuerto = new Slot();
-            Slot slotBarmanFrio_FromPuerto = new Slot();
-            Slot slotCorrFrio1_ToEnrich = new Slot();
-            Slot slotCorrFrio2_ToEnrich = new Slot();
-            Slot slotEnrichFrio_ToMerge = new Slot();
+            System.out.println("Conectando a la base de datos...");
 
-            // f. Flujo Caliente
-            Slot slotRepCal1_ToTrans = new Slot();
-            Slot slotRepCal2_ToCorr = new Slot();
-            Slot slotTransCal_ToPuerto = new Slot();
-            Slot slotBarmanCal_FromPuerto = new Slot();
-            Slot slotCorrCal1_ToEnrich = new Slot();
-            Slot slotCorrCal2_ToEnrich = new Slot();
-            Slot slotEnrichCal_ToMerge = new Slot();
+            try (java.sql.Connection checkConn = java.sql.DriverManager.getConnection(connectionUrl)) {
 
-            // h. Merger -> Aggregator
-            Slot slotMergedOut = new Slot();
-            
-            // i. Aggregator -> Flujo de Pago
-            Slot slotAggregatorOut = new Slot();
+                // Verificamos si la conexión es válida con un timeout de 5 segundos
+                if (!checkConn.isValid(5)) {
+                    throw new RuntimeException("La conexión se estableció pero no es válida.");
+                }
+                System.out.println("-> Conexión exitosa.");
 
-            // --- NUEVOS SLOTS PARA EL FLUJO DE PAGO ---
-            /*Slot slotAgg_To_TransPago = new Slot();
-            Slot slotAgg_To_EnrichPago = new Slot();
-            Slot slotPeticionPago = new Slot();
-            Slot slotRespuestaPago = new Slot();
-            Slot slotFinalParaCamarero = new Slot(); */// --- NUEVO ---
+            } catch (java.sql.SQLException e) {
+                // Si falla (entra aquí), lanzamos una excepción que detiene el programa
+                // inmediatamente
+                throw new RuntimeException(
+                        "ERROR FATAL: No se pudo conectar a la Base de Datos. Verifique el archivo .env y la VPN/Red.",
+                        e);
+            }
 
+            // --- 2. DEFINICIÓN DE TODOS LOS SLOTS ---
+            // Definimos todos los nombres de los canales en una lista simple
+            List<String> nombresSlots = Arrays.asList(
+                    "comandasIn", "splitterOut",
+                    "bebidasFrias", "bebidasCalientes",
+                    // Rama Fría
+                    "repFrioToTrans", "repFrioToCorr", "transFrioToPuerto",
+                    "barmanFrioOut", "corrFrioToEnrichP", "corrFrioToEnrichC", "enrichFrioToMerge",
+                    // Rama Caliente
+                    "repCalToTrans", "repCalToCorr", "transCalToPuerto",
+                    "barmanCalOut", "corrCalToEnrichP", "corrCalToEnrichC", "enrichCalToMerge",
+                    // Unión y Pago
+                    "mergedOut", "aggregatorOut", "finalCamarero");
 
-            // Lista de todos los slots para el helper 'isSistemaEstable'
-            // --- MODIFICADO --- (Añadidos los nuevos slots)
-            Slot[] todosLosSlots = {
-                slotComandasIn, slotSplitterOut, slotBebidasFrias, slotBebidasCalientes,
-                slotRepFrio1_ToTrans, slotRepFrio2_ToCorr, slotTransFrio_ToPuerto, slotBarmanFrio_FromPuerto,
-                slotCorrFrio1_ToEnrich, slotCorrFrio2_ToEnrich, slotEnrichFrio_ToMerge,
-                slotRepCal1_ToTrans, slotRepCal2_ToCorr, slotTransCal_ToPuerto, slotBarmanCal_FromPuerto,
-                slotCorrCal1_ToEnrich, slotCorrCal2_ToEnrich, slotEnrichCal_ToMerge,
-                slotMergedOut, slotAggregatorOut,
-                // Slots de pago
-                //slotAgg_To_TransPago, slotAgg_To_EnrichPago, slotPeticionPago, slotRespuestaPago, slotFinalParaCamarero
-            };
-
-
-            // --- 3. "CABLEADO" DE COMPONENTES SEGÚN PDF ---
-
-            // a. Puerto de Entrada Comandas
-            PuertoEntrada puertoComandas = new PuertoEntrada(slotComandasIn);
+            // CREACIÓN AUTOMÁTICA: Un Map guarda todos los slots por nombre
+            Map<String, Slot> slots = new HashMap<>();
+            for (String nombre : nombresSlots) {
+                slots.put(nombre, new Slot());
+            }
+            List<ITarea> tareas = new ArrayList<>();
+            // --- 3. "CABLEADO" DE COMPONENTES ---
+            // A. PUERTO DE ENTRADA (COMANDAS)
+            // Instanciamos manualmente porque son componentes de frontera (I/O)
+            PuertoEntrada puertoComandas = new PuertoEntrada(slots.get("comandasIn"));
             ConectorFicheroEntrada conectorComandas = new ConectorFicheroEntrada(puertoComandas);
 
-            // b. Splitter (1)
-            Splitter splitter = new Splitter(slotComandasIn, slotSplitterOut);
-            splitter.setXPathExpression("//drink"); // Basado en order1.xml
+            // SPLITTER (1)
+            Map<String, Object> cfgSplit = new HashMap<>();
+            cfgSplit.put("xpath", "//drink");
 
-            // c. Distributor (2)
-            Distributor distributor = new Distributor(slotSplitterOut, Arrays.asList(slotBebidasFrias, slotBebidasCalientes));
-            distributor.setXpath("/drink/type"); // Basado en order1.xml
-            distributor.setElementosSegunOrden(Arrays.asList("cold", "hot")); 
+            tareas.add(TareaFactory.crearTarea(TareaFactory.TipoTarea.SPLITTER, List.of(slots.get("comandasIn")),
+                    List.of(slots.get("splitterOut")), cfgSplit));
 
-            // --- Flujo Frío (3, 4, 5, 6) ---
-            Replicator replicatorFrio = new Replicator(slotBebidasFrias, Arrays.asList(slotRepFrio1_ToTrans, slotRepFrio2_ToCorr));
-            Translator translatorFrio = new Translator(List.of(slotRepFrio1_ToTrans), List.of(slotTransFrio_ToPuerto));
-            translatorFrio.setRutaXSLT("src/main/resources/transformar_bebida_fria.xslt"); 
-            PuertoSolicitante puertoBarmanFrio = new PuertoSolicitante(slotTransFrio_ToPuerto, slotBarmanFrio_FromPuerto);
+            // Estás diciendo:
+            // "Fábrica, por favor créame una tarea de tipo Splitter. Conéctala tomando el
+            // cable 'comandasIn' y sacando por el cable 'splitterOut'
+            // (te los paso en listas porque así lo acordamos). Ah, y usa esta configuración
+            // para ajustar sus parámetros internos. Cuando termines,
+            // dame el objeto listo para guardarlo en mi lista de ejecución."
+
+            // DISTRIBUTOR (2)
+            Map<String, Object> cfgDist = new HashMap<>();
+            cfgDist.put("xpath", "/drink/type");
+            cfgDist.put("orden", Arrays.asList("cold", "hot"));
+
+            tareas.add(TareaFactory.crearTarea(
+                    TareaFactory.TipoTarea.DISTRIBUTOR,
+                    List.of(slots.get("splitterOut")),
+                    Arrays.asList(slots.get("bebidasFrias"), slots.get("bebidasCalientes")),
+                    cfgDist));
+
+            // Flujo frio
+            // Replicator Frío
+            tareas.add(TareaFactory.crearTarea(
+                    TareaFactory.TipoTarea.REPLICATOR,
+                    List.of(slots.get("bebidasFrias")),
+                    Arrays.asList(slots.get("repFrioToTrans"), slots.get("repFrioToCorr")),
+                    null // Sin config extra
+            ));
+
+            // Translator Frío
+            Map<String, Object> cfgTransFrio = new HashMap<>();
+            cfgTransFrio.put("xslt", "src/main/resources/transformar_bebida_fria.xslt");
+
+            tareas.add(TareaFactory.crearTarea(
+                    TareaFactory.TipoTarea.TRANSLATOR,
+                    List.of(slots.get("repFrioToTrans")),
+                    List.of(slots.get("transFrioToPuerto")),
+                    cfgTransFrio));
+
+            // Puerto y Conector Frío
+            PuertoSolicitante puertoBarmanFrio = new PuertoSolicitante(
+                    slots.get("transFrioToPuerto"),
+                    slots.get("barmanFrioOut"));
             ConectorSolicitudDB conectorBarmanFrio = new ConectorSolicitudDB(puertoBarmanFrio, connectionUrl);
-            Correlator correlatorFrio = new Correlator(
-                Arrays.asList(slotRepFrio2_ToCorr, slotBarmanFrio_FromPuerto), 
-                Arrays.asList(slotCorrFrio1_ToEnrich, slotCorrFrio2_ToEnrich)
-            );
-            ContextEnricher enricherFrio = new ContextEnricher(
-                Arrays.asList(slotCorrFrio1_ToEnrich, slotCorrFrio2_ToEnrich), 
-                List.of(slotEnrichFrio_ToMerge)
-            );
-            enricherFrio.setXPathPrincipal("/drink"); 
-            enricherFrio.setXPathContexto("/resultadoSQL/fila"); 
 
-            // --- Flujo Caliente (7, 8, 9, 10) --- 
-            Replicator replicatorCaliente = new Replicator(slotBebidasCalientes, Arrays.asList(slotRepCal1_ToTrans, slotRepCal2_ToCorr));
-            Translator translatorCaliente = new Translator(List.of(slotRepCal1_ToTrans), List.of(slotTransCal_ToPuerto));
-            translatorCaliente.setRutaXSLT("src/main/resources/transformar_bebida_caliente.xslt");
-            PuertoSolicitante puertoBarmanCaliente = new PuertoSolicitante(slotTransCal_ToPuerto, slotBarmanCal_FromPuerto);
+            // Correlator Frío
+            tareas.add(TareaFactory.crearTarea(
+                    TareaFactory.TipoTarea.CORRELATOR,
+                    Arrays.asList(slots.get("repFrioToCorr"), slots.get("barmanFrioOut")),
+                    Arrays.asList(slots.get("corrFrioToEnrichP"), slots.get("corrFrioToEnrichC")),
+                    null));
+
+            // Enricher Frío
+            Map<String, Object> cfgEnrichFrio = new HashMap<>();
+            cfgEnrichFrio.put("xpath-p", "/drink"); // Principal
+            cfgEnrichFrio.put("xpath-c", "/resultadoSQL/fila"); // Contexto
+
+            tareas.add(TareaFactory.crearTarea(
+                    TareaFactory.TipoTarea.ENRICHER,
+                    Arrays.asList(slots.get("corrFrioToEnrichP"), slots.get("corrFrioToEnrichC")),
+                    List.of(slots.get("enrichFrioToMerge")), cfgEnrichFrio));
+
+            // Flujo Caliente
+            // Replicator Caliente
+            tareas.add(TareaFactory.crearTarea(
+                    TareaFactory.TipoTarea.REPLICATOR,
+                    List.of(slots.get("bebidasCalientes")),
+                    Arrays.asList(slots.get("repCalToTrans"), slots.get("repCalToCorr")),
+                    null));
+
+            // Translator Caliente
+            Map<String, Object> cfgTransCal = new HashMap<>();
+            cfgTransCal.put("xslt", "src/main/resources/transformar_bebida_caliente.xslt");
+
+            tareas.add(TareaFactory.crearTarea(
+                    TareaFactory.TipoTarea.TRANSLATOR,
+                    List.of(slots.get("repCalToTrans")),
+                    List.of(slots.get("transCalToPuerto")),
+                    cfgTransCal));
+
+            // Puerto y Conector Caliente
+            PuertoSolicitante puertoBarmanCaliente = new PuertoSolicitante(
+                    slots.get("transCalToPuerto"),
+                    slots.get("barmanCalOut"));
             ConectorSolicitudDB conectorBarmanCaliente = new ConectorSolicitudDB(puertoBarmanCaliente, connectionUrl);
-            Correlator correlatorCaliente = new Correlator(
-                Arrays.asList(slotRepCal2_ToCorr, slotBarmanCal_FromPuerto),
-                Arrays.asList(slotCorrCal1_ToEnrich, slotCorrCal2_ToEnrich)
-            );
-            ContextEnricher enricherCaliente = new ContextEnricher(
-                Arrays.asList(slotCorrCal1_ToEnrich, slotCorrCal2_ToEnrich),
-                List.of(slotEnrichCal_ToMerge)
-            );
-            enricherCaliente.setXPathPrincipal("/drink");
-            enricherCaliente.setXPathContexto("/resultadoSQL/fila");
 
-            // --- Flujo Común (11, 12) ---
-            // h. Merger (11)
-            Merge merger = new Merge(Arrays.asList(slotEnrichFrio_ToMerge, slotEnrichCal_ToMerge), slotMergedOut);
-            // i. Aggregator (12)
-            Agregator agregator = new Agregator(List.of(slotMergedOut), List.of(slotAggregatorOut));
+            // Correlator Caliente
+            tareas.add(TareaFactory.crearTarea(
+                    TareaFactory.TipoTarea.CORRELATOR,
+                    Arrays.asList(slots.get("repCalToCorr"), slots.get("barmanCalOut")),
+                    Arrays.asList(slots.get("corrCalToEnrichP"), slots.get("corrCalToEnrichC")),
+                    null));
 
-            
-            // --- INICIO: NUEVO FLUJO DE PAGO (Pasos 13, 14, 15, 16) ---
+            // Enricher Caliente
+            Map<String, Object> cfgEnrichCal = new HashMap<>();
+            cfgEnrichCal.put("xpath-p", "/drink");
+            cfgEnrichCal.put("xpath-c", "/resultadoSQL/fila");
 
-            // j. Replicator (13): Duplica la comanda agregada
-           /* Replicator replicatorPago = new Replicator(slotAggregatorOut, Arrays.asList(slotAgg_To_TransPago, slotAgg_To_EnrichPago));
+            tareas.add(TareaFactory.crearTarea(
+                    TareaFactory.TipoTarea.ENRICHER,
+                    Arrays.asList(slots.get("corrCalToEnrichP"), slots.get("corrCalToEnrichC")),
+                    List.of(slots.get("enrichCalToMerge")),
+                    cfgEnrichCal));
 
-            // k. Translator (14): Transforma la comanda en petición de pago
-            Translator translatorPago = new Translator(List.of(slotAgg_To_TransPago), List.of(slotPeticionPago));
-            translatorPago.setRutaXSLT("src/main/resources/transformar_a_pago.xslt");
+            // Flujo Comun
+            // Merger
+            tareas.add(TareaFactory.crearTarea(
+                    TareaFactory.TipoTarea.MERGE,
+                    Arrays.asList(slots.get("enrichFrioToMerge"), slots.get("enrichCalToMerge")),
+                    List.of(slots.get("mergedOut")),
+                    null));
 
-            // l. Conector Stripe (15): Llama a la API de Stripe
-            PuertoSolicitante puertoPago = new PuertoSolicitante(slotPeticionPago, slotRespuestaPago);
-            ConectorStripePago conectorStripe = new ConectorStripePago(puertoPago, stripeApiKey);
+            // Agregator
+            tareas.add(TareaFactory.crearTarea(
+                    TareaFactory.TipoTarea.AGREGATOR,
+                    List.of(slots.get("mergedOut")),
+                    List.of(slots.get("aggregatorOut")),
+                    null));
 
-            // m. Enricher (16): Añade la respuesta de pago a la comanda final
-            ContextEnricher enricherPago = new ContextEnricher(
-                Arrays.asList(slotAgg_To_EnrichPago, slotRespuestaPago), // Entradas: Comanda original y Respuesta de Stripe
-                List.of(slotFinalParaCamarero) // Salida: Comanda final con datos de pago
-            );
-            enricherPago.setXPathPrincipal("/cafe_order"); // Añade la info en la raíz de la comanda
-            enricherPago.setXPathContexto("/resultadoPago"); // Coge el XML de respuesta de Stripe
-            */
-            // --- FIN: NUEVO FLUJO DE PAGO ---
+            // TRANSLATOR FINAL (LIMPIEZA DE TICKET) ---
+            Map<String, Object> cfgTransFinal = new HashMap<>();
+            cfgTransFinal.put("xslt", "src/main/resources/transformar_ticket_final.xslt");
 
-
-            // n. Puerto de Salida Camarero (Final)
-            // --- MODIFICADO ---: Ahora lee del slot 'slotFinalParaCamarero'
-            PuertoSalida puertoCamarero = new PuertoSalida(slotAggregatorOut);
+            tareas.add(TareaFactory.crearTarea(
+                    TareaFactory.TipoTarea.TRANSLATOR,
+                    List.of(slots.get("aggregatorOut")), // ENTRADA: Lo que sale del Agregator
+                    List.of(slots.get("finalCamarero")), // SALIDA: El XML limpio para el fichero
+                    cfgTransFinal));
+            // SALIDA (CAMARERO)
+            PuertoSalida puertoCamarero = new PuertoSalida(slots.get("finalCamarero"));
             ConectorFicheroSalida conectorCamarero = new ConectorFicheroSalida(puertoCamarero);
-            
+
             File entregasDir = new File("./cafe/entregas");
             if (!entregasDir.exists()) {
                 entregasDir.mkdirs();
             }
-            conectorCamarero.setRutaSalida(entregasDir.getPath()); 
+            conectorCamarero.setRutaSalida(entregasDir.getPath());
 
-
-            // --- 4. EJECUCIÓN DEL FLUJO ---
+            // --- 4. EJECUCIÓN DEL FLUJO (INTERACTIVO Y AUTOMÁTICO) ---
 
             System.out.println("Introduce los números de comanda a procesar (ej: 1,3,8):");
             Scanner scanner = new Scanner(System.in);
-            String input = scanner.nextLine(); // Lee la línea "1,3,8"
+            String input = scanner.nextLine(); // Lee la línea de la consola
 
-            // 2. Procesar la entrada
-            List<String> comandas = new ArrayList<>();
-            String[] numeros = input.split(","); // Divide el string en ["1", "3", "8"]
+            // Preparar lista de archivos a procesar
+            List<String> rutasComandas = new ArrayList<>();
+            String[] numeros = input.split(",");
 
             for (String num : numeros) {
-                String numLimpio = num.trim(); // Quita espacios (por si escriben "1, 3")
-                if (!numLimpio.isEmpty()) { // Evita procesar si escriben "1,,3"
-                    comandas.add("src/main/resources/order" + numLimpio + ".xml");
+                String numLimpio = num.trim();
+                if (!numLimpio.isEmpty()) {
+                    rutasComandas.add("src/main/resources/order" + numLimpio + ".xml");
                 }
             }
 
-            System.out.println("Procesando " + comandas.size() + " comandas...");
+            System.out.println("Procesando " + rutasComandas.size() + " comandas...");
 
-            for (String rutaComanda : comandas) {
+            // Bucle principal: Procesar cada comanda una por una
+            for (String rutaComanda : rutasComandas) {
                 System.out.println("\n--- Cargando Comanda: " + rutaComanda + " ---");
-                
+
                 File f = new File(rutaComanda);
-                if(!f.exists()) { 
+                if (!f.exists()) {
                     System.out.println("Advertencia: No se encontró el archivo " + rutaComanda + ". Saltando...");
-                    continue; // Salta al siguiente bucle si el orderX.xml no existe
+                    continue;
                 }
 
-                // a. Cargar la comanda en el primer slot
+                // A. INYECCIÓN INICIAL
+                // Configuramos el conector de entrada con la ruta actual y cargamos el mensaje
                 conectorComandas.setRuta(rutaComanda);
-                conectorComandas.execute();
-                puertoComandas.execute();
+                conectorComandas.execute(); // Lee fichero -> Puerto
+                puertoComandas.execute(); // Puerto -> Slot 'comandasIn'
 
-                // b. Iniciar el "motor"
+                // B. MOTOR DE EJECUCIÓN (BUCLE WHILE)
                 int ciclos = 0;
-                
-                while (!isSistemaEstable(todosLosSlots)) {
-                    
-                    // Ejecutar todos los componentes en orden lógico
-                    splitter.execute();
-                    distributor.execute();
-                    
-                    replicatorFrio.execute();
-                    replicatorCaliente.execute();
-                    
-                    translatorFrio.execute();
-                    translatorCaliente.execute();
-                    
-                    puertoBarmanFrio.execute();
-                    puertoBarmanCaliente.execute();
-                    
-                    conectorBarmanFrio.execute();
-                    conectorBarmanCaliente.execute();
-                    
-                    puertoBarmanFrio.execute();
-                    puertoBarmanCaliente.execute();
-                    
-                    correlatorFrio.execute();
-                    correlatorCaliente.execute();
-                    
-                    enricherFrio.execute();
-                    enricherCaliente.execute();
-                    
-                    merger.execute();
-                    agregator.execute();
-                    
-                    // --- N1UEVO ---: Ejecutar componentes de pago
-                    /*replicatorPago.execute();
-                    translatorPago.execute();
-                    puertoPago.execute();
-                    
-                    if(!slotPeticionPago.isEmptyQueue()) {
-                    conectorStripe.execute(); // Segundo execute para mover la respuesta
-                    } 
-                    puertoPago.execute();
-                    enricherPago.execute();*/
-                    
-                    // --- MODIFICADO ---: Salida a Fichero (Camarero)
-                    puertoCamarero.execute(); 
-                    conectorCamarero.execute(); 
 
+                // El sistema sigue rodando mientras haya mensajes en CUALQUIER slot
+                while (!isSistemaEstable(slots)) {
+
+                    // 1. Ejecutar Tareas Automáticas (Las que creamos con la Factory)
+                    // Esto cubre: Splitter, Distributor, Replicators, Translators,
+                    // Correlators, Enrichers, Merge, Agregator
+                    for (ITarea tarea : tareas) {
+                        tarea.execute();
+                    }
+
+                    // 2. Ejecutar Componentes Manuales (Conectores y Puertos de frontera)
+                    // Estos no están en la lista 'tareas' porque requieren gestión de recursos
+                    // externos
+
+                    // --- Rama Fría (Base de Datos) ---
+                    puertoBarmanFrio.execute(); // Mueve petición al conector (si hay)
+                    conectorBarmanFrio.execute(); // Ejecuta SQL
+                    puertoBarmanFrio.execute(); // Mueve respuesta al slot de salida
+
+                    // --- Rama Caliente (Base de Datos) ---
+                    puertoBarmanCaliente.execute();
+                    conectorBarmanCaliente.execute();
+                    puertoBarmanCaliente.execute();
+
+                    // --- Flujo de Pago (Stripe) ---
+
+                    // --- Salida Final (Fichero) ---
+                    puertoCamarero.execute(); // Slot -> Conector
+                    conectorCamarero.execute(); // Escribe fichero
+
+                    // 3. Control de Atascos (Safety Check)
                     ciclos++;
-                    if (ciclos > 100) { 
-                        System.err.println("Simulación detenida: Posible bucle infinito o atasco.");
-                        // Imprimir estado de las colas para depurar
-                        System.err.println("--- ESTADO DE SLOTS (ATASCO) ---");
-                        for (Slot s : todosLosSlots) {
-                            if (!s.isEmptyQueue()) {
-                                System.err.println("Slot " + s.toString() + " tiene " + s.getQueueSize() + " mensajes.");
-                            }
-                        }
-                        // --- FIN DEBUG ---
+                    if (ciclos > 200) { // Aumentado un poco por si hay muchos pasos
+                        System.err.println("!!! ATASCO DETECTADO O BUCLE INFINITO !!!");
+                        mostrarEstadoSlots(slots); // Método helper para ver dónde se quedó
                         break;
                     }
                 }
@@ -295,6 +303,7 @@ public class cafe {
             }
 
             System.out.println("\nSimulación completada. Revisa el directorio './cafe/entregas'.");
+            scanner.close();
 
         } catch (Exception e) {
             System.err.println("Ha ocurrido un error fatal en la simulación:");
@@ -302,9 +311,36 @@ public class cafe {
         }
     }
 
-    
-    private static boolean isSistemaEstable(Slot... slots) {
-        // Usamos la API Stream para comprobar si "alguno" de los slots NO está vacío
-        return !Stream.of(slots).anyMatch(slot -> !slot.isEmptyQueue());
+    // ==========================================
+    // MÉTODOS AUXILIARES
+    // ==========================================
+
+    /**
+     * Verifica si el sistema está "quieto".
+     * Retorna TRUE si TODOS los slots del mapa están vacíos.
+     */
+    private static boolean isSistemaEstable(java.util.Map<String, Slot> slots) {
+        for (Slot slot : slots.values()) {
+            if (!slot.isEmptyQueue()) {
+                return false; // Si encontramos uno con mensajes, el sistema sigue trabajando
+            }
+        }
+        return true;
     }
+
+    /**
+     * Método de depuración.
+     * Imprime por consola qué slots tienen mensajes atrapados.
+     */
+    private static void mostrarEstadoSlots(java.util.Map<String, Slot> slots) {
+        System.err.println("--- ESTADO DE LOS SLOTS (DEBUG) ---");
+        for (java.util.Map.Entry<String, Slot> entrada : slots.entrySet()) {
+            Slot s = entrada.getValue();
+            if (!s.isEmptyQueue()) {
+                System.err.println(
+                        " -> Slot ['" + entrada.getKey() + "'] tiene " + s.getQueueSize() + " mensajes pendientes.");
+            }
+        }
+    }
+
 }

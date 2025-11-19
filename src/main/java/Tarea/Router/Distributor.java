@@ -19,9 +19,15 @@ public class Distributor extends TareaBase {
     private List<String> elementosSegunOrden;
     private String xpath;
 
-    public Distributor(Slot entrada, List<Slot> salidas) {
-        super(List.of(entrada), salidas);
-    }
+     public Distributor(List<Slot> entradas, List<Slot> salidas) {
+        super(entradas, salidas);
+
+			// VALIDACIÓN (Importante): Protegemos la lógica interna
+			if (entradas.size() != 1) {
+				throw new IllegalArgumentException("Distributor requiere exactamente 1 slot de entrada");
+			}
+
+        }
 
     @Override
     public void execute() {

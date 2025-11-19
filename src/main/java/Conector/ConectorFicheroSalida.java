@@ -28,10 +28,13 @@ public class ConectorFicheroSalida extends Conector{
         LocalDateTime fecha = LocalDateTime.now();
         java.time.format.DateTimeFormatter formato = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
         String fechaCadena = fecha.format(formato);
-   
+        
 
         Document doc = super.puerto.getDocumentBySlot();
 
+        if (doc == null) {
+            return;
+        }
         try {
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
             Transformer transformer = transformerFactory.newTransformer();

@@ -29,9 +29,17 @@ public class Splitter extends TareaBase {
 	   private String xPathExpression;
 	    private String idXML;
 
-	    public Splitter(Slot entrada, Slot salida) {
-	        super(List.of(entrada), List.of(salida));
-	    }
+		public Splitter(Slot entrada, Slot salida) {
+			super(List.of(entrada), List.of(salida));
+
+			// VALIDACIÓN (Importante): Protegemos la lógica interna
+			if (entradas.size() != 1) {
+				throw new IllegalArgumentException("Splitter requiere exactamente 1 slot de entrada");
+			}
+			if (salidas.size() != 1) {
+				throw new IllegalArgumentException("Splitter requiere exactamente 1 slot de salida");
+			}
+		}
 
 	    @Override
 	    public void execute() {
