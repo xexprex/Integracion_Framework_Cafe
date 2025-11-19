@@ -45,21 +45,15 @@ public class Splitter extends TareaBase {
      * @param salida 	Slot único donde se depositarán las multiples partes del mensaje
      */
 	public Splitter(Slot entrada, Slot salida) {
-		
 		super(List.of(entrada), List.of(salida));
-		//if (entradas.size() != 1) {
-		//	throw new IllegalArgumentException("Splitter requiere exactamente 1 slot de entrada");
-		//if (salidas.size() != 1) {
-		//	throw new IllegalArgumentException("Splitter requiere exactamente 1 slot de salida");
-		//}
 	}
 
 	@Override
 	public void execute() {
 		//Verifica si no hay mensajes.
 		if (!entradas.getFirst().isEmptyQueue()) {
-			idXML = UUID.randomUUID().toString();												//* */ Genera un ID unico para la sesion, este ID permite al agregator saber
-																								//* */ que mensajes pertenecen al mismo grupo.
+			idXML = UUID.randomUUID().toString();												//* Genera un ID unico para la sesion, este ID permite al agregator saber
+																								//* que mensajes pertenecen al mismo grupo.
 			Mensaje mensaje = entradas.getFirst().dequeuePoll();
 			Document doc = mensaje.getBody();
 
