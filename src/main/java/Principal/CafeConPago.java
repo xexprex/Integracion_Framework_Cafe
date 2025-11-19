@@ -1,6 +1,5 @@
 package Principal;
 
-import Tarea.*;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
@@ -10,8 +9,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
-import Conector.*;
-import Puerto.*;
+import Conector.ConectorFicheroEntrada;
+import Conector.ConectorFicheroSalida;
+import Conector.ConectorSolicitudDB;
+import Conector.ConectorStripePago;
+import Puerto.PuertoEntrada;
+import Puerto.PuertoSalida;
+import Puerto.PuertoSolicitante;
+import Tarea.ITarea;
+import Tarea.TareaFactory;
 import io.github.cdimascio.dotenv.Dotenv;
 
 public class CafeConPago {
@@ -42,8 +48,8 @@ public class CafeConPago {
                                         "corrFrioToEnrichP", "corrFrioToEnrichC", "enrichFrioToMerge",
                                         "repCalToTrans", "repCalToCorr", "transCalToPuerto", "barmanCalOut",
                                         "corrCalToEnrichP", "corrCalToEnrichC", "enrichCalToMerge",
-                                        "mergedOut", "aggregatorOut","finalCamarero" 
-                        );
+                                        "mergedOut", "aggregatorOut", "finalCamarero",
+                                        "slotStripe", "slotFichero");
 
                         Map<String, Slot> slots = new HashMap<>();
                         for (String nombre : nombresSlots)
@@ -144,19 +150,33 @@ public class CafeConPago {
                         Map<String, Object> cfgTransFinal = new HashMap<>();
                         cfgTransFinal.put("xslt", "src/main/resources/transformar_a_pago.xslt");
 
+                        // --- REPLICATOR PARA BIFURCAR (Stripe + Fichero) ---
                         tareas.add(TareaFactory.crearTarea(
                                         TareaFactory.TipoTarea.TRANSLATOR,
                                         List.of(slots.get("aggregatorOut")), // Leemos del agregador
                                         List.of(slots.get("finalCamarero")), // Escribimos al slot final
                                         cfgTransFinal));
 
-                        // N. SALIDA
-                        PuertoSalida puertoCamarero = new PuertoSalida(slots.get("finalCamarero"));
+                        // Tomamos el mensaje de 'finalCamarero' y lo duplicamos
+                        tareas.add(TareaFactory.crearTarea(
+                                        TareaFactory.TipoTarea.REPLICATOR,
+                                        List.of(slots.get("finalCamarero")), // Entrada
+                                        Arrays.asList(slots.get("slotStripe"), slots.get("slotFichero")), // Salidas
+                                        null));
+
+                        // SALIDA FICHERO
+                        PuertoSalida puertoCamarero = new PuertoSalida(slots.get("slotFichero"));
                         ConectorFicheroSalida conectorCamarero = new ConectorFicheroSalida(puertoCamarero);
                         File entregasDir = new File("./cafe/entregas");
                         if (!entregasDir.exists())
                                 entregasDir.mkdirs();
                         conectorCamarero.setRutaSalida(entregasDir.getPath());
+
+                        // --- RAMA B: CONECTOR STRIPE (Pago API) ---
+                        // Definimos el puerto y el conector para Stripe 
+                        PuertoSalida puertoStripe = new PuertoSalida(slots.get("slotStripe"));
+                        String stripeKey = dotenv.get("STRIPE_KEY");
+                        ConectorStripePago conectorStripe = new ConectorStripePago(puertoStripe, stripeKey);
 
                         // 4. EJECUCIÓN
                         Scanner scanner = new Scanner(System.in);
@@ -189,6 +209,9 @@ public class CafeConPago {
 
                                 puertoCamarero.execute();
                                 conectorCamarero.execute();
+
+                                puertoStripe.execute(); 
+                                conectorStripe.execute();
 
                                 ciclos++;
                                 if (ciclos > 200)

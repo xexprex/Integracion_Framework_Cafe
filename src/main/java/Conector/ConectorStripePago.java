@@ -1,6 +1,7 @@
 package Conector;
 
 import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
 
 import com.stripe.Stripe;
 import com.stripe.model.Charge;
@@ -26,9 +27,10 @@ public class ConectorStripePago extends Conector {
         }
 
         try {
+            /*
             String monto = docPeticion.getElementsByTagName("monto").item(0).getTextContent();
             String moneda = docPeticion.getElementsByTagName("moneda").item(0).getTextContent();
-            String fuente = docPeticion.getElementsByTagName("fuente").item(0).getTextContent();
+            String fuente = docPeticion.getElementsByTagName("fuente").item(0).getTextContent(); 
 
             ChargeCreateParams params = ChargeCreateParams.builder()
                     .setAmount(Long.parseLong(monto))
@@ -38,9 +40,40 @@ public class ConectorStripePago extends Conector {
                     .build();
 
             Charge.create(params);
-            /* Ahora el documento lo generamos por el puerto solicitante
+           Ahora el documento lo generamos por el puerto solicitante
             Document docRespuesta = crearDocumentoRespuesta(charge);
             puerto.setDocument(docRespuesta);*/
+            // El ticket generado tiene <cobrado> dentro de <total>
+            NodeList listaCobrado = docPeticion.getElementsByTagName("cobrado");
+            
+            // Verificamos si existe para evitar el NullPointerException
+            if (listaCobrado.getLength() == 0) {
+                System.out.println("ConectorStripe: No se encontró el monto a cobrar en el XML.");
+                return;
+            }
+
+            String montoTexto = listaCobrado.item(0).getTextContent();
+            
+            // 2. CONVERSIÓN: El XML trae decimales (ej: "5.4"), pero Stripe pide centavos (long)
+            // Convertimos "5.4" -> 5.4 -> 540
+            double montoDouble = Double.parseDouble(montoTexto);
+            long montoCentavos = (long) (montoDouble * 100); 
+
+            // 3. VALORES POR DEFECTO: Como el ticket no trae moneda ni tarjeta, los ponemos fijos
+            String moneda = "eur"; 
+            String fuente = "tok_visa"; // Token de prueba de Stripe siempre válido
+
+            // (Opcional) Si quisieras leerlos del XML si existieran:
+            // if (docPeticion.getElementsByTagName("moneda").getLength() > 0) ...
+
+            ChargeCreateParams params = ChargeCreateParams.builder()
+                    .setAmount(montoCentavos) // Usamos el long calculado
+                    .setCurrency(moneda)
+                    .setSource(fuente)
+                    .setDescription("Cobro automático ticket café")
+                    .build();
+
+            Charge charge = Charge.create(params);
 
         } catch (Exception e) {
             System.out.println("Error en ConectorStripePago: " + e.getMessage());

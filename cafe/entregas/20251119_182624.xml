@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><cafe_order><order_id>1</order_id><drinks><drink><name>cafe</name><type>hot</type><stock>100</stock></drink><drink><name>coca-cola</name><type>cold</type><stock>80</stock></drink></drinks><total><cobrado>3.6</cobrado></total></cafe_order>
