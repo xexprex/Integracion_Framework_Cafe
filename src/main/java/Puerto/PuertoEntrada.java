@@ -14,11 +14,13 @@ public class PuertoEntrada extends Puerto {
 
     @Override
     public void execute() {
+        // Verificamos si el Conector ya ha inyectado un documento XML en este puerto
         if (doc != null) {
             try {
+                // Generamos las cabeceras necesarias (ID único para trazabilidad)
                 Head head = new Head();
                 head.setIdUnico(IdUnico.getInstance().getIdUnico());
-
+                // Encapsulamos el XML (body) y las cabeceras (head) en un objeto Mensaje
                 Mensaje mensaje = new Mensaje(head, doc);
 
                 salida.enqueue(mensaje);

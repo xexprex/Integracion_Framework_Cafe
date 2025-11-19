@@ -5,7 +5,7 @@ import org.w3c.dom.Document;
 import Principal.Mensaje;
 import Principal.Slot;
 
-public abstract class Puerto {
+public abstract class Puerto {//encapsular la gestión del flujo de mensajes (Mensaje) y la extracción de su contenido XML (Document)
 	
 	 protected final Slot entrada;
 	    protected final Slot salida;
@@ -21,9 +21,11 @@ public abstract class Puerto {
 	    public abstract void execute();
 
 	    public Document getDocumentBySlot() {
-	        if (entrada.getQueueSize() > 0) {
-	            mensaje = entrada.dequeuePoll();
-	            doc = (Document) mensaje.getBody();
+	        if (entrada.getQueueSize() > 0) {//Comprobar si hay mensajes esperando en la cola.
+
+	            mensaje = entrada.dequeuePoll();// Se guarda en la variable de clase 'mensaje' para mantener el contexto (headers, IDs, etc.).
+
+	            doc = (Document) mensaje.getBody();//Se hace un casting explícito a Document (XML) y se actualiza la variable de estado 'doc'.
 	            return doc;
 	        }
 	        return null;

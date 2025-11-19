@@ -13,15 +13,16 @@ public class PuertoSolicitante extends Puerto{
 
     @Override
     public void execute() {
-        if(doc != null && mensaje != null){ // Añadimos un check extra
+        if(doc != null && mensaje != null){ 
+            // 1. Actualizamos el cuerpo del mensaje original con la respuesta recibida (ej. resultado SQL)
             mensaje.setBody((Document) doc);
             salida.enqueue(mensaje);
             
-            // --- INICIO DE LA CORRECCIÓN ---
-            // Limpiamos el estado para no procesar el mismo mensaje 101 veces
+
+           // Reseteamos las referencias para evitar re-procesar el mismo mensaje en el siguiente ciclo
             doc = null;
             mensaje = null;
-            // --- FIN DE LA CORRECCIÓN ---
+
         }
     }
 
