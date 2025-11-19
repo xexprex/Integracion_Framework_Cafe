@@ -1,10 +1,6 @@
 package Conector;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-
 import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 
 import com.stripe.Stripe;
 import com.stripe.model.Charge;
@@ -41,15 +37,18 @@ public class ConectorStripePago extends Conector {
                     .setDescription("Cobro de prueba desde IntegracionCafe")
                     .build();
 
-            Charge charge = Charge.create(params);
+            Charge.create(params);
+            /* Ahora el documento lo generamos por el puerto solicitante
             Document docRespuesta = crearDocumentoRespuesta(charge);
-            puerto.setDocument(docRespuesta);
+            puerto.setDocument(docRespuesta);*/
 
         } catch (Exception e) {
             System.out.println("Error en ConectorStripePago: " + e.getMessage());
             e.printStackTrace();
         }
     }
+
+    /*Ahora el documento lo generamos por el puerto solicitante
 
     private Document crearDocumentoRespuesta(Charge charge) throws Exception {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -72,5 +71,5 @@ public class ConectorStripePago extends Conector {
         raiz.appendChild(monto);
 
         return newDoc;
-    }
+    } */
 }
