@@ -44,7 +44,6 @@ public class cafe {
                 if (!checkConn.isValid(5)) {
                     throw new RuntimeException("La conexión se estableció pero no es válida.");
                 }
-                System.out.println("-> Conexión exitosa.");
 
             } catch (java.sql.SQLException e) {
                 // Si falla (entra aquí), lanzamos una excepción que detiene el programa
@@ -86,13 +85,6 @@ public class cafe {
 
             tareas.add(TareaFactory.crearTarea(TareaFactory.TipoTarea.SPLITTER, List.of(slots.get("comandasIn")),
                     List.of(slots.get("splitterOut")), cfgSplit));
-
-            // Estás diciendo:
-            // "Fábrica, por favor créame una tarea de tipo Splitter. Conéctala tomando el
-            // cable 'comandasIn' y sacando por el cable 'splitterOut'
-            // (te los paso en listas porque así lo acordamos). Ah, y usa esta configuración
-            // para ajustar sus parámetros internos. Cuando termines,
-            // dame el objeto listo para guardarlo en mi lista de ejecución."
 
             // DISTRIBUTOR (2)
             Map<String, Object> cfgDist = new HashMap<>();
@@ -213,6 +205,7 @@ public class cafe {
                     List.of(slots.get("aggregatorOut")), // ENTRADA: Lo que sale del Agregator
                     List.of(slots.get("finalCamarero")), // SALIDA: El XML limpio para el fichero
                     cfgTransFinal));
+            
             // SALIDA (CAMARERO)
             PuertoSalida puertoCamarero = new PuertoSalida(slots.get("finalCamarero"));
             ConectorFicheroSalida conectorCamarero = new ConectorFicheroSalida(puertoCamarero);
@@ -224,23 +217,13 @@ public class cafe {
             conectorCamarero.setRutaSalida(entregasDir.getPath());
 
             // --- 4. EJECUCIÓN DEL FLUJO (INTERACTIVO Y AUTOMÁTICO) ---
-
-            System.out.println("Introduce los números de comanda a procesar (ej: 1,3,8):");
+            System.out.println("Introduce el número de comanda a procesar (ej: 1,3):");
             Scanner scanner = new Scanner(System.in);
-            String input = scanner.nextLine(); // Lee la línea de la consola
+            int numero = scanner.nextInt();
 
             // Preparar lista de archivos a procesar
             List<String> rutasComandas = new ArrayList<>();
-            String[] numeros = input.split(",");
-
-            for (String num : numeros) {
-                String numLimpio = num.trim();
-                if (!numLimpio.isEmpty()) {
-                    rutasComandas.add("src/main/resources/order" + numLimpio + ".xml");
-                }
-            }
-
-            System.out.println("Procesando " + rutasComandas.size() + " comandas...");
+            rutasComandas.add("src/main/resources/order" + numero + ".xml");
 
             // Bucle principal: Procesar cada comanda una por una
             for (String rutaComanda : rutasComandas) {
@@ -264,7 +247,7 @@ public class cafe {
                 // El sistema sigue rodando mientras haya mensajes en CUALQUIER slot
                 while (!isSistemaEstable(slots)) {
 
-                    // 1. Ejecutar Tareas Automáticas (Las que creamos con la Factory)
+                    // 1. Ejs (Las que creamos con la Factory)ecutar Tareas Automática
                     // Esto cubre: Splitter, Distributor, Replicators, Translators,
                     // Correlators, Enrichers, Merge, Agregator
                     for (ITarea tarea : tareas) {
@@ -284,8 +267,6 @@ public class cafe {
                     puertoBarmanCaliente.execute();
                     conectorBarmanCaliente.execute();
                     puertoBarmanCaliente.execute();
-
-                    // --- Flujo de Pago (Stripe) ---
 
                     // --- Salida Final (Fichero) ---
                     puertoCamarero.execute(); // Slot -> Conector

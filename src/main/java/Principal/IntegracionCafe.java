@@ -5,6 +5,10 @@ import java.util.Scanner;
 public class IntegracionCafe {
 
     public static void main(String[] args) {
+     
+     
+     
+     
         Scanner scanner = new Scanner(System.in);
         System.out.println("=========================================");
         System.out.println("      INTEGRACIÓN CAFÉ - SIMULADOR       ");
@@ -26,7 +30,7 @@ public class IntegracionCafe {
         } else {
             System.out.println("Opción no válida.");
         }  
-        scanner.close();
+        scanner.close(); 
     }
 }
 
