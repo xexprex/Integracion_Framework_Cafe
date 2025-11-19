@@ -15,30 +15,33 @@ public class Correlator extends TareaBase {
 
     @Override
     public void execute() {
+        // 1. Validación previa: Si alguna cola de entrada está vacía, no podemos formar grupos completos, así que salimos.
         for (Slot entrada : entradas) {
             if (entrada.isEmptyQueue()) {
                 return;
             }
         }
 
+        // 2. Bucle principal: Iteramos sobre la primera cola (maestra) para usar sus mensajes como referencia de búsqueda.
         // Iteramos sobre una copia de la cola maestra
         for (Mensaje mensajeControl : entradas.get(0).getQueue()) {
             
-            // CAMBIO 1: Usamos el método correcto (getIdCorrelator) y el tipo (int)
+            //  Obtenemos el ID para buscar coincidencias 
             int idCorrelacion = mensajeControl.getHead().getIdCorrelator();
 
-            // CAMBIO 2: Comparamos con -1 (valor por defecto) en lugar de null
+            // Saltamos mensajes que no tengan un ID de correlación válido
             if (idCorrelacion == -1) {
                 continue; 
             }
 
+            // Lista temporal para guardar el grupo de mensajes coincidentes
             List<Mensaje> mensajesCorrelacionados = new ArrayList<>();
             mensajesCorrelacionados.add(mensajeControl);
 
             boolean setCompleto = true;
-            
+            // 3. Buscamos el mensaje correspondiente en el resto de las colas de entrada
             for (int i = 1; i < entradas.size(); i++) {
-                // CAMBIO 3: Pasamos el 'int' al método de búsqueda
+                // Pasamos el 'int' al método de búsqueda
                 Mensaje mensajeEncontrado = findMessageByCorrelId(entradas.get(i), idCorrelacion);
                 if (mensajeEncontrado != null) {
                     mensajesCorrelacionados.add(mensajeEncontrado);
@@ -48,9 +51,11 @@ public class Correlator extends TareaBase {
                 }
             }
 
+            // 4. Procesamiento: Si encontramos el mensaje en TODAS las colas (set completo)
             if (setCompleto) {
                 for (int i = 0; i < entradas.size(); i++) {
                     Mensaje msg = mensajesCorrelacionados.get(i);
+                    // Retiramos el mensaje de la cola de entrada y lo pasamos a la salida correspondiente
                     entradas.get(i).removeByMessage(msg); 
                     salidas.get(i).enqueue(msg);
                 }
@@ -62,10 +67,10 @@ public class Correlator extends TareaBase {
     /**
      * Busca un mensaje por ID de correlación (ahora como int).
      */
-    // CAMBIO 4: El parámetro ahora es 'int'
+
     private Mensaje findMessageByCorrelId(Slot slot, int idCorrelacion) {
         for (Mensaje mensaje : slot.getQueue()) {
-            // CAMBIO 5: Comparamos 'int' con '=='
+
             if (idCorrelacion == mensaje.getHead().getIdCorrelator()) {
                 return mensaje;
             }
