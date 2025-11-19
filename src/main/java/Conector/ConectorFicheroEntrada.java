@@ -29,7 +29,6 @@ public class ConectorFicheroEntrada extends Conector {
             DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
             Document doc = docBuilder.parse(rutaEntrada);
 
-            //TODO -> No sé si esta bien
             super.puerto.setDocument(doc);
 
         } catch (ParserConfigurationException | SAXException | IOException e) {
