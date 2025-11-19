@@ -28,16 +28,21 @@ public class Filter extends TareaBase{
 
 	    @Override
 	    public void execute() {
+			// 1. Verificación inicial: Procesamos solo si hay mensajes pendientes en la entrada.
 	        if(!entradas.getFirst().isEmptyQueue()){
+				// 2. Recuperación: Extraemos el mensaje y su contenido XML para analizarlo.
 	            Mensaje mensaje = entradas.getFirst().dequeuePoll();
 	            Document doc = mensaje.getBody();
 
 	            try {
+					// 3. Preparación XPath: Configuramos el motor para evaluar la expresión de filtro.
 	                XPathFactory xPathFactory = XPathFactory.newInstance();
 	                XPath xPath = xPathFactory.newXPath();
 	                XPathExpression expr = xPath.compile(xpath);
 	                NodeList items = (NodeList) expr.evaluate(doc, XPathConstants.NODESET);
 
+					// 4. Lógica de Filtrado: 
+                	// El mensaje pasa solo si el nodo buscado existe (no es null) y tiene contenido (no está vacío).
 	                if(items.item(0) != null && !items.item(0).getTextContent().isEmpty()){
 	                    salidas.getFirst().enqueue(mensaje);
 	                }
