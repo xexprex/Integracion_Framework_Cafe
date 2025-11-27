@@ -2,16 +2,24 @@ package Tarea;
 
 import java.util.List;
 import java.util.Map;
+
 import Principal.Slot;
-import Tarea.Router.*;
-import Tarea.Transformer.*;
-import Tarea.modifier.*;
+import Tarea.Router.Correlator;
+import Tarea.Router.Distributor;
+import Tarea.Router.Filter;
+import Tarea.Router.Merge;
+import Tarea.Router.Replicator;
+import Tarea.Transformer.Agregator;
+import Tarea.Transformer.Splitter;
+import Tarea.Transformer.Translator;
+import Tarea.modifier.ContextEnricher;
+import Tarea.modifier.CorrelatorIdSetter;
 
 public class TareaFactory {
 
     // Definimos el Enum público para que puedas usar TareaFactory.TipoTarea.SPLITTER
     public enum TipoTarea {
-        SPLITTER, DISTRIBUTOR, AGREGATOR, MERGE, FILTER, REPLICATOR, TRANSLATOR, CORRELATOR, ENRICHER
+        SPLITTER, DISTRIBUTOR, AGREGATOR, MERGE, FILTER, REPLICATOR, TRANSLATOR, CORRELATOR, ENRICHER, ID_SETTER
     }
 
     public static ITarea crearTarea(TipoTarea tipo, List<Slot> entradas, List<Slot> salidas, Map<String, Object> config) {
@@ -20,7 +28,7 @@ public class TareaFactory {
 
         switch (tipo) {
             case SPLITTER:
-                // Tu Splitter actual pide (Slot, Slot), así que sacamos el primero de cada lista
+                //Splitter pide (Slot, Slot), así que sacamos el primero de cada lista
                 tarea = new Splitter(entradas.get(0), salidas.get(0));
                 if (config != null && config.containsKey("xpath")) {
                     ((Splitter) tarea).setXPathExpression((String) config.get("xpath"));
@@ -28,7 +36,7 @@ public class TareaFactory {
                 break;
 
             case DISTRIBUTOR:
-                // Tu Distributor pide (Slot, List)
+                //Distributor pide (Slot, List)
                 tarea = new Distributor(entradas, salidas);
                 if (config != null) {
                     if(config.containsKey("xpath")) ((Distributor) tarea).setXpath((String) config.get("xpath"));
@@ -37,12 +45,12 @@ public class TareaFactory {
                 break;
 
             case REPLICATOR:
-                // Tu Replicator pide (Slot, List)
+                //Replicator pide (Slot, List)
                 tarea = new Replicator(entradas.get(0), salidas);
                 break;
 
             case TRANSLATOR:
-                // Tu Translator pide (List, List)
+                //Translator pide (List, List)
                 tarea = new Translator(entradas, salidas);
                 if (config != null && config.containsKey("xslt")) {
                     ((Translator) tarea).setRutaXSLT((String) config.get("xslt"));
@@ -50,12 +58,12 @@ public class TareaFactory {
                 break;
 
             case CORRELATOR:
-                 // Tu Correlator pide (List, List)
+                 //Correlator pide (List, List)
                 tarea = new Correlator(entradas, salidas);
                 break;
 
             case ENRICHER:
-                // Tu ContextEnricher pide (List, List)
+                //ContextEnricher pide (List, List)
                 tarea = new ContextEnricher(entradas, salidas);
                 if (config != null) {
                     if(config.containsKey("xpath-p")) ((ContextEnricher) tarea).setXPathPrincipal((String) config.get("xpath-p"));
@@ -64,22 +72,25 @@ public class TareaFactory {
                 break;
             
             case MERGE:
-                // Tu Merge pide (List, Slot)
+                //Merge pide (List, Slot)
                 tarea = new Merge(entradas, salidas);
                 break;
 
             case AGREGATOR:
-                 // Tu Agregator pide (List, List)
+                 //Agregator pide (List, List)
                 tarea = new Agregator(entradas, salidas);
                 break;
             
             case FILTER:
-                 // Tu Filter pide (Slot, Slot)
+                 //Filter pide (Slot, Slot)
                  tarea = new Filter(entradas.get(0), salidas.get(0));
                  if (config != null && config.containsKey("xpath")) {
                      ((Filter) tarea).setXpath((String) config.get("xpath"));
                  }
                  break;
+            case ID_SETTER: 
+                tarea = new CorrelatorIdSetter(entradas, salidas);
+                break;
 
             default:
                 throw new IllegalArgumentException("Tipo de tarea no soportado: " + tipo);

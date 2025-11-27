@@ -36,29 +36,41 @@ public class Translator extends TareaBase {
         this.rutaXSLT = rutaXSLT;
     }
 
-    @Override
+     @Override
     public void execute() {
-    	if(entradas.getFirst().isEmptyQueue()) {
-    		return;
-    	}
-    	try {
-    	    Mensaje mensaje = entradas.getFirst().dequeuePoll();							//* Recupera el mensaje de la cola y obtenemos su contenido XML actual
-    	    Transformer transformer = TransformerFactory.newInstance()						//* Creamos una instancia para cargar el archivo .XSLT configurado,
-			.newTransformer(new StreamSource(new File(rutaXSLT)));							//* ese archivo contiene las reglas de como convertir el XML de uno a otro.
+        // Verificación de guardia: Si no hay mensajes pendientes, salimos para ahorrar procesamiento.
+        if(entradas.getFirst().isEmptyQueue()) {
+            // System.out.println("Translator: No hay mensaje en la cola de entrada.");
+            return;
+        }
+        
+        try {
+            // Recuperamos el mensaje de la cola y obtenemos su contenido XML actual.
+            Mensaje mensaje = entradas.getFirst().dequeuePoll();
 
-		
-    	    Document output = DocumentBuilderFactory.newInstance()							//* Creamos un documento en blanco donde el traslador 
-			.newDocumentBuilder().newDocument();											//* escribira el resultado.
+            // Creamos una instancia de Transformer cargando el archivo .xslt configurado.
+            // Este objeto contiene las "reglas" de cómo convertir el XML A en XML B.
+            Transformer transformer = TransformerFactory.newInstance()
+                    .newTransformer(new StreamSource(new File(rutaXSLT)));
 
-    	    transformer.transform(new DOMSource(mensaje.getBody()), new DOMResult(output));	//* DOMSource: Es el XML original (El de entrada).
-																							//* DOMResult: Es el documento vacio (El de salida), ahí va los resultados.
-			
-			mensaje.setBody(output);														//* Remplaza el cuerpo del mensaje original con el nuevo documento.
-    	    salidas.getFirst().enqueue(mensaje);											//* Por ultimo colocamos el mensaje transformador en la cola de salida.
+            // Necesitamos un documento en blanco donde el Transformer escribirá el resultado.
+            Document output = DocumentBuilderFactory.newInstance()
+                    .newDocumentBuilder().newDocument();
 
-    	} catch (Exception e) {
-    	    e.printStackTrace();
-    	}
+            // - DOMSource: Es el XML original (Input)
+            // - DOMResult: Es el documento vacío (Output) donde se volcará el resultado
+            transformer.transform(new DOMSource(mensaje.getBody()), new DOMResult(output));
+
+            // Reemplazamos el cuerpo del mensaje original con el nuevo documento transformado.
+            // Nota: Mantenemos el mismo objeto 'Mensaje' (y sus cabeceras/IDs), solo cambiamos el Body.
+            mensaje.setBody(output);
+            
+            // Colocamos el mensaje transformado en la cola de salida.
+            salidas.getFirst().enqueue(mensaje);
+
+        } catch (Exception e) {
+            System.err.println("Error crítico en Translator (" + rutaXSLT + "):");
+            e.printStackTrace();
+        }
     }
 }
-

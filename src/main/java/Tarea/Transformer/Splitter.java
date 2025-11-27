@@ -48,60 +48,80 @@ public class Splitter extends TareaBase {
 		super(List.of(entrada), List.of(salida));
 	}
 
-	@Override
-	public void execute() {
-		//Verifica si no hay mensajes.
-		if (!entradas.getFirst().isEmptyQueue()) {
-			idXML = UUID.randomUUID().toString();												//* Genera un ID unico para la sesion, este ID permite al agregator saber
-																								//* que mensajes pertenecen al mismo grupo.
-			Mensaje mensaje = entradas.getFirst().dequeuePoll();
-			Document doc = mensaje.getBody();
+	 @Override
+    public void execute() {
+        // Verificación de guardia: Si no hay mensajes, no gastamos recursos.
+        if (!entradas.getFirst().isEmptyQueue()) {
+            
+            // Generamos un ID único para esta "sesión" de división.
+            // Este ID permitirá al Agregator saber qué mensajes pertenecen al mismo grupo original.
+            idXML = UUID.randomUUID().toString();
 
-			try {
-				XPathFactory xPathFactory = XPathFactory.newInstance();							//* Expresion XPAHT para localizar los nodos.
-				XPath xPath = xPathFactory.newXPath();											//* 
-				XPathExpression expr = xPath.compile(xPathExpression);							//*
+            Mensaje mensaje = entradas.getFirst().dequeuePoll();
+            Document doc = mensaje.getBody();
 
-				NodeList items = (NodeList) expr.evaluate(doc, XPathConstants.NODESET);			//* Obetenemos la lista de nodos para separarlo 
-				String xp = "//" + items.item(0).getParentNode().getNodeName(); 			//* Calculamos el Xpahy del padre para saber donde
-																								//* reinstalar los datos en el futuro 
+            try {
+                // Compilamos la expresión para localizar los nodos repetitivos (ej: <item>, <drink>)
+                XPathFactory xPathFactory = XPathFactory.newInstance();
+                XPath xPath = xPathFactory.newXPath();
+                XPathExpression expr = xPath.compile(xPathExpression);
 
-				for (int i = 0; i < items.getLength(); i++) {									//* Eliminamos los items hijos del documento original
-					Node item = items.item(i);													//* Lo que queda es el "Esqueleto"
-					item.getParentNode().removeChild(item);										//* 
-				}
+                // Obtenemos la lista de nodos que vamos a separar
+                NodeList items = (NodeList) expr.evaluate(doc, XPathConstants.NODESET);
 
-				ValoresDiccionario vD = new ValoresDiccionario(xp, doc);						//* Guardamos ese esqueleto en el diccionario grobal asociado a su ID
-				Diccionario diccionario = Diccionario.getInstance();							//* El agregator usara ese ID para recuperar dicho esqueleto.
-				diccionario.put(idXML, vD);														//* 
+                // Calculamos el XPath del padre para saber dónde re-insertar en el futuro
+                String xp = "//" + items.item(0).getParentNode().getNodeName();
 
-				for (int i = 0; i < items.getLength(); i++) {									//* Se iteran todos los nodos extraidos para crear los
-					DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();	//* mensajes independientes. Creamos un documento XML limpio
-					DocumentBuilder docBuilder = docFactory.newDocumentBuilder();				//* para el fragmento.
-					Document newDoc = docBuilder.newDocument();									//* 
-																								//* 
-					Node item = items.item(i);													//* Importamos el nodo nuevo.
-					Node importedItem = newDoc.importNode(item, true);					//* 
-					newDoc.appendChild(importedItem);											//* 
-																								//* 
-					Head headAux = new Head(0, idXML, (i + 1), items.getLength());//* Configuramos la cabecera para la agregacion.
-					headAux.setIdUnico(IdUnico.getInstance().getIdUnico());						//* Asignamos un nuevo ID para saber donde esta el mensaje.
-					Mensaje mensajeAux = new Mensaje(headAux, newDoc);							//* 
-																								//* 
-					salidas.getFirst().enqueue(mensajeAux);										//* Por ultimo enviamos el fragmento de mensaje al siguiente paso.
-				}
+                // Eliminamos los items hijos del documento original.
+                // Lo que queda es el "esqueleto" (cabeceras, IDs de pedido, totales, etc.).
+                for (int i = 0; i < items.getLength(); i++) {
+                    Node item = items.item(i);
+                    item.getParentNode().removeChild(item);
+                }
 
-			} catch (Exception e) {
-				System.out.println("Error al ejecutar el splitter " + e.getMessage());
-			}
-		}
-	}
+                // Guardamos el documento "esqueleto" en el Diccionario global asociado al ID de secuencia (idXML).
+                // El Agregator usará ese idXML para recuperar el esqueleto y rellenarlo de nuevo.
+                ValoresDiccionario vD = new ValoresDiccionario(xp, doc);
+                Diccionario diccionario = Diccionario.getInstance();
+                diccionario.put(idXML, vD);
+                
+                // Iteramos sobre los nodos extraídos para crear mensajes independientes.
+                for (int i = 0; i < items.getLength(); i++) {
+                    
+                    // Crear un nuevo Documento XML limpio para el fragmento
+                    DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+                    DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+                    Document newDoc = docBuilder.newDocument();
 
-	/**
+                    // Importar el nodo al nuevo documento
+                    Node item = items.item(i);
+                    Node importedItem = newDoc.importNode(item, true);
+                    newDoc.appendChild(importedItem);
+
+                    // CONFIGURACIÓN DE LA CABECERA (HEAD
+                    Head headAux = new Head(0, idXML, (i + 1), items.getLength());
+                    
+                    // Asignamos un nuevo ID único de trazabilidad al mensaje
+                    headAux.setIdUnico(IdUnico.getInstance().getIdUnico());
+                    
+                    Mensaje mensajeAux = new Mensaje(headAux, newDoc);
+
+                    // Enviamos el fragmento al siguiente paso
+                    salidas.getFirst().enqueue(mensajeAux);
+                }
+
+            } catch (Exception e) {
+                System.out.println("Error al ejecutar el splitter: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
      * Define qué nodos se separarán.
      * @param xPathExpression Expresión XPath (ej: "/Pedido/Items/Item")
-    */
-	public void setXPathExpression(String xPathExpression) {
-		this.xPathExpression = xPathExpression;
-	}
+     */
+    public void setXPathExpression(String xPathExpression) {
+        this.xPathExpression = xPathExpression;
+    }
 }

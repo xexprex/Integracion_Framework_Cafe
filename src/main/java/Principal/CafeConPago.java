@@ -43,7 +43,7 @@ public class CafeConPago {
 
                         // 2. DEFINICIÓN DE SLOTS
                         List<String> nombresSlots = Arrays.asList(
-                                        "comandasIn", "splitterOut", "bebidasFrias", "bebidasCalientes",
+                                        "comandasIn", "splitterOut", "correlatorOut","bebidasFrias", "bebidasCalientes",
                                         "repFrioToTrans", "repFrioToCorr", "transFrioToPuerto", "barmanFrioOut",
                                         "corrFrioToEnrichP", "corrFrioToEnrichC", "enrichFrioToMerge",
                                         "repCalToTrans", "repCalToCorr", "transCalToPuerto", "barmanCalOut",
@@ -69,14 +69,24 @@ public class CafeConPago {
                                         List.of(slots.get("comandasIn")),
                                         List.of(slots.get("splitterOut")), cfgSplit));
 
-                        // 2. Distributor
+                        //ID SETTER
+                        tareas.add(TareaFactory.crearTarea(
+                                TareaFactory.TipoTarea.ID_SETTER,
+                                List.of(slots.get("splitterOut")),   // Entrada (viene del Splitter)
+                                List.of(slots.get("correlatorOut")), // Salida (va al Distributor)
+                                null // No requiere configuración extra
+                        ));
+
+                        // DISTRIBUTOR (2)
                         Map<String, Object> cfgDist = new HashMap<>();
                         cfgDist.put("xpath", "/drink/type");
                         cfgDist.put("orden", Arrays.asList("cold", "hot"));
-                        tareas.add(TareaFactory.crearTarea(TareaFactory.TipoTarea.DISTRIBUTOR,
-                                        List.of(slots.get("splitterOut")),
-                                        Arrays.asList(slots.get("bebidasFrias"), slots.get("bebidasCalientes")),
-                                        cfgDist));
+
+                        tareas.add(TareaFactory.crearTarea(
+                                TareaFactory.TipoTarea.DISTRIBUTOR,
+                                List.of(slots.get("correlatorOut")),
+                                Arrays.asList(slots.get("bebidasFrias"), slots.get("bebidasCalientes")),
+                                cfgDist));
 
                         // --- Rama Fría ---
                         tareas.add(TareaFactory.crearTarea(TareaFactory.TipoTarea.REPLICATOR,

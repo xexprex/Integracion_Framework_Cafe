@@ -56,7 +56,7 @@ public class cafe {
             // --- 2. DEFINICIÓN DE TODOS LOS SLOTS ---
             // Definimos todos los nombres de los canales en una lista simple
             List<String> nombresSlots = Arrays.asList(
-                    "comandasIn", "splitterOut",
+                    "comandasIn", "splitterOut","correlatorOut",
                     "bebidasFrias", "bebidasCalientes",
                     // Rama Fría
                     "repFrioToTrans", "repFrioToCorr", "transFrioToPuerto",
@@ -86,6 +86,14 @@ public class cafe {
             tareas.add(TareaFactory.crearTarea(TareaFactory.TipoTarea.SPLITTER, List.of(slots.get("comandasIn")),
                     List.of(slots.get("splitterOut")), cfgSplit));
 
+            //ID SETTER
+            tareas.add(TareaFactory.crearTarea(
+                TareaFactory.TipoTarea.ID_SETTER,
+                List.of(slots.get("splitterOut")),   // Entrada (viene del Splitter)
+                List.of(slots.get("correlatorOut")), // Salida (va al Distributor)
+                null // No requiere configuración extra
+            ));
+
             // DISTRIBUTOR (2)
             Map<String, Object> cfgDist = new HashMap<>();
             cfgDist.put("xpath", "/drink/type");
@@ -93,7 +101,7 @@ public class cafe {
 
             tareas.add(TareaFactory.crearTarea(
                     TareaFactory.TipoTarea.DISTRIBUTOR,
-                    List.of(slots.get("splitterOut")),
+                    List.of(slots.get("correlatorOut")),
                     Arrays.asList(slots.get("bebidasFrias"), slots.get("bebidasCalientes")),
                     cfgDist));
 

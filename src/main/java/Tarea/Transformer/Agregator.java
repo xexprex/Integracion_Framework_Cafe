@@ -43,56 +43,80 @@ public class Agregator extends TareaBase {
         super(entradas, salidas);
     }
 
-    @Override
+ @Override
     public void execute() {
-        // Verifica Si no hay nada que procesar.
+        // Verificación rápida: Si no hay nada que procesar, salimos.
         if (entradas.getFirst().isEmptyQueue()) {
             return;
         }
 
-        List<Mensaje> mensajes = entradas.getFirst().getQueue();         //* Obtenemos una copia de la cola para iterar sin modificar 
-        boolean terminado = false;                                       
+        // Obtenemos una copia de la cola para iterar sin modificarla concurrentemente (aunque aquí es single-thread)
+        List<Mensaje> mensajes = entradas.getFirst().getQueue();
+        boolean terminado = false;
         int indexGlobal = 0;
 
-        while (!terminado && indexGlobal < mensajes.size()) {                               //* Iteramos sobre los mensajes pendientes. 
-            Mensaje mensaje = mensajes.get(indexGlobal);                                    
-            Head head = mensaje.getHead();  
+        // Iteramos sobre los mensajes pendientes para ver si alguno completa una secuencia
+        while (!terminado && indexGlobal < mensajes.size()) {
+            Mensaje mensaje = mensajes.get(indexGlobal);
+            Head head = mensaje.getHead();
 
-            Utilidad utilidad = new Utilidad(entradas.getFirst());                          //* Usamos la clase utilidad para buscar en la cola todos los mensajes
-            List<Mensaje> aux = utilidad.getMessagesByIdSecuencia(head.getIdSecuencia());   //* que tengan el mismo ID de secuencia y agrupa los fragmentos.
+            // Usamos una utilidad para buscar en la cola TODOS los mensajes que tengan el mismo ID de Secuencia.
+            // Esto agrupa los fragmentos dispersos que pueden haber llegado desordenados.
+            Utilidad utilidad = new Utilidad(entradas.getFirst());
+            List<Mensaje> aux = utilidad.getMessagesByIdSecuencia(head.getIdSecuencia());
 
-            if (aux.size() == head.getTotalSecuencia()) {                                   //* Verifica si la cantridad de mensajes encontrados coincide con el total.
-                    Diccionario diccionario = Diccionario.getInstance();                    //* Si encuentra todos los mensajes quiere decir que el grupo esta completo
-                    ValoresDiccionario vd = diccionario.get(head.getIdSecuencia());         //* por tanto recuperamos el esqueleto XML original que el splitter guardo.
-                    Document context = (Document) vd.getContext();                          //*
+            // Verificamos si la cantidad de mensajes encontrados coincide con el 'totalSecuencia' esperado.
+            // Si faltan mensajes, ignoramos este grupo por ahora y seguimos esperando.
+            if (aux.size() == head.getTotalSecuencia()) {
+                
+                // El grupo está completo. Recuperamos el "esqueleto" XML original que el Splitter guardó.
+                Diccionario diccionario = Diccionario.getInstance();
+                ValoresDiccionario vd = diccionario.get(head.getIdSecuencia());
+                Document context = (Document) vd.getContext();
 
-                    try {
-                        XPathFactory xPathFactory = XPathFactory.newInstance();             //* Preparamos XPATH para encontrar un punto de entrada en el esqueleto. 
-                        XPath xPath = xPathFactory.newXPath();
-                        XPathExpression expr = xPath.compile(vd.getxPathExpression());
-                        NodeList items = (NodeList) expr.evaluate(context, XPathConstants.NODESET); //* Localizamos el nodo padre donde se va a pegar los hijos.
+                try {
+                    // Preparamos XPath para encontrar el punto de inserción en el esqueleto
+                    XPathFactory xPathFactory = XPathFactory.newInstance();
+                    XPath xPath = xPathFactory.newXPath();
+                    XPathExpression expr = xPath.compile(vd.getxPathExpression());
+                    
+                    // Localizamos el nodo padre donde se deben pegar los hijos (ej: <Pedido>)
+                    NodeList items = (NodeList) expr.evaluate(context, XPathConstants.NODESET);
 
-                        for (Mensaje m : aux) {                                             //* Iteramos sobre cada fragmento recuperado.
-                            Document docAux = m.getBody();                                  //* Lo pegamos en el esqueleto.
-                            Node node = docAux.getDocumentElement();                        //* y eliminamos el fragmento individual de la cola de entrada porque
-                            Node importedNode = context.importNode(node, true);       //* este ya ha sido procesado.
-                            items.item(0).appendChild(importedNode);
-                            entradas.getFirst().removeByMessage(m);
-                        }
-
-                        terminado = true;                                                   //* Marcamos como terminado para salir del bucle principal.
-
-                        mensaje.setBody(context);                                           //* Actualizamos el cuerpo del mensaje con elodocumento completo reconstruido
-                        mensaje.getHead().setNumSecuencia(0);                  //* reseteamos el contador de secuencia.
-                        salidas.getFirst().enqueue(mensaje);                                //* y enviamos el mensaje final unificado.
-
-                    } catch (XPathExpressionException e) {
-                        System.out.println("Error al ejecutar Aggregator: " + e.getMessage());
-                        e.printStackTrace();
+                    // Iteramos sobre cada fragmento recuperado.
+                    for (Mensaje m : aux) {
+                        Document docAux = m.getBody();
+                        Node node = docAux.getDocumentElement(); // La raíz del fragmento (ej: <item>)
+                        
+                        // Importamos el nodo al documento contexto (necesario porque vienen de Docs distintos)
+                        Node importedNode = context.importNode(node, true);
+                        
+                        // Lo pegamos en el esqueleto
+                        items.item(0).appendChild(importedNode);
+                        
+                        // Eliminamos el fragmento individual de la cola de entrada, ya que ha sido procesado.
+                        entradas.getFirst().removeByMessage(m);
                     }
+
+                    // Marcamos como terminado para salir del bucle principal y no procesar el mismo grupo dos veces
+                    terminado = true;
+                    
+                    // Actualizamos el cuerpo del mensaje con el documento completo reconstruido.
+                    mensaje.setBody(context);
+                    
+                    // Reseteamos el contador de secuencia indicando que ya no es un fragmento.
+                    mensaje.getHead().setNumSecuencia(0);
+                    
+                    // Enviamos el mensaje final unificado.
+                    salidas.getFirst().enqueue(mensaje);
+
+                } catch (XPathExpressionException e) {
+                    System.out.println("Error al ejecutar Aggregator: " + e.getMessage());
+                    e.printStackTrace();
                 }
-                indexGlobal++;
             }
+
+            indexGlobal++;
+        }
     }
 }
-
