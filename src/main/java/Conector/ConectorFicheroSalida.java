@@ -16,7 +16,7 @@ import Puerto.Puerto;
 public class ConectorFicheroSalida extends Conector{
     private String rutaSalida;
 
-    public ConectorFicheroSalida(Puerto puerto) {//TODO PONER RUTA EN EL CONECTOR
+    public ConectorFicheroSalida(Puerto puerto) {
         super(puerto);
     }
 
